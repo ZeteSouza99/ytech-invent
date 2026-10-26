@@ -1,0 +1,67 @@
+{
+  "name": "ytech-invent",
+  "version": "1.1.2",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android --variant release",
+    "apk": "powershell.exe -NoProfile -File scripts/build-apk.ps1",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "build": "npm run typecheck && esbuild server/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/server.mjs",
+    "server": "node --env-file-if-exists=.env --import tsx server/index.ts",
+    "server:prod": "node --env-file-if-exists=.env dist/server.mjs"
+  },
+  "dependencies": {
+    "@react-native-community/netinfo": "12.0.1",
+    "@react-native-google-signin/google-signin": "16.1.5",
+    "exceljs": "4.4.0",
+    "expo": "~57.0.26",
+    "expo-asset": "~57.0.19",
+    "expo-camera": "~57.0.6",
+    "expo-crypto": "~57.0.3",
+    "expo-document-picker": "~57.0.3",
+    "expo-file-system": "~57.0.7",
+    "expo-print": "~57.0.2",
+    "expo-secure-store": "~57.0.4",
+    "expo-sharing": "~57.0.22",
+    "expo-sqlite": "~57.0.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "google-auth-library": "^10.5.0",
+    "helmet": "^8.1.0",
+    "nodemailer": "^10.0.13",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.10.1",
+    "@types/nodemailer": "^8.0.2",
+    "@types/react": "~19.2.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.50.0",
+    "vitest": "^5.0.3"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "11.1.1"
+    },
+    "xcode": {
+      "uuid": "11.1.1"
+    }
+  },
+  "engines": {
+    "node": ">=24.13.0 <25"
+  }
+}

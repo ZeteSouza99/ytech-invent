@@ -1,0 +1,4302 @@
+[
+ {
+  "file": "09.00.139.jpeg",
+  "width": 1600,
+  "height": 1200,
+  "barcodes": [
+   {
+    "value": "88BCAC650A8C",
+    "format": "code128",
+    "box": {
+     "x": 606,
+     "y": 805,
+     "width": 376,
+     "height": 44
+    }
+   }
+  ],
+  "lines": [
+   {
+    "text": "IF REMOVED",
+    "box": {
+     "x": 596,
+     "y": 7,
+     "width": 66,
+     "height": 18
+    },
+    "block": 0
+   },
+   {
+    "text": "BT:",
+    "box": {
+     "x": 597,
+     "y": 489,
+     "width": 24,
+     "height": 45
+    },
+    "block": 1
+   },
+   {
+    "text": "88BCAC650A8D",
+    "box": {
+     "x": 596,
+     "y": 314,
+     "width": 25,
+     "height": 168
+    },
+    "block": 1
+   },
+   {
+    "text": "ZEBRA TECHNOLOGIES CORP.HOLTSVILLE,",
+    "box": {
+     "x": 773,
+     "y": 595,
+     "width": 367,
+     "height": 20
+    },
+    "block": 2
+   },
+   {
+    "text": "NY 11742",
+    "box": {
+     "x": 773,
+     "y": 617,
+     "width": 74,
+     "height": 21
+    },
+    "block": 2
+   },
+   {
+    "text": "Pats.: ip.zebra.com",
+    "box": {
+     "x": 594,
+     "y": 645,
+     "width": 214,
+     "height": 24
+    },
+    "block": 2
+   },
+   {
+    "text": "MODEL( ): MC3401",
+    "box": {
+     "x": 605,
+     "y": 680,
+     "width": 253,
+     "height": 24
+    },
+    "block": 2
+   },
+   {
+    "text": "PIN:MC3401-0G1 R64SS-A6",
+    "box": {
+     "x": 608,
+     "y": 711,
+     "width": 289,
+     "height": 18
+    },
+    "block": 2
+   },
+   {
+    "text": "(S) S/N: 25150523023493",
+    "box": {
+     "x": 605,
+     "y": 739,
+     "width": 268,
+     "height": 25
+    },
+    "block": 2
+   },
+   {
+    "text": "WLAN : 88BCAC650A8C",
+    "box": {
+     "x": 606,
+     "y": 778,
+     "width": 261,
+     "height": 18
+    },
+    "block": 2
+   },
+   {
+    "text": "N ZEBRA",
+    "box": {
+     "x": 595,
+     "y": 595,
+     "width": 165,
+     "height": 42
+    },
+    "block": 3
+   },
+   {
+    "text": "MFD: 30MAY25",
+    "box": {
+     "x": 1062,
+     "y": 827,
+     "width": 150,
+     "height": 24
+    },
+    "block": 4
+   }
+  ]
+ },
+ {
+  "file": "09.00.217.jpeg",
+  "width": 1200,
+  "height": 1600,
+  "barcodes": [
+   {
+    "value": "[)>\u001e05\u001d800466305652N222300499\u001e\u0004",
+    "format": "datamatrix",
+    "box": {
+     "x": 892,
+     "y": 530,
+     "width": 120,
+     "height": 120
+    }
+   }
+  ],
+  "lines": [
+   {
+    "text": "ZEBRA",
+    "box": {
+     "x": 137,
+     "y": 534,
+     "width": 157,
+     "height": 69
+    },
+    "block": 0
+   },
+   {
+    "text": "7Stripe",
+    "box": {
+     "x": 290,
+     "y": 216,
+     "width": 434,
+     "height": 149
+    },
+    "block": 1
+   },
+   {
+    "text": "Zebra Technolog les Corporation",
+    "box": {
+     "x": 35,
+     "y": 592,
+     "width": 397,
+     "height": 55
+    },
+    "block": 2
+   },
+   {
+    "text": "Model/Modelo",
+    "box": {
+     "x": 39,
+     "y": 636,
+     "width": 264,
+     "height": 45
+    },
+    "block": 2
+   },
+   {
+    "text": "Serial No./No. de Série",
+    "box": {
+     "x": 54,
+     "y": 707,
+     "width": 410,
+     "height": 54
+    },
+    "block": 3
+   },
+   {
+    "text": "F9|52N222300499",
+    "box": {
+     "x": 62,
+     "y": 762,
+     "width": 345,
+     "height": 41
+    },
+    "block": 3
+   },
+   {
+    "text": "IE",
+    "box": {
+     "x": 160,
+     "y": 996,
+     "width": 48,
+     "height": 30
+    },
+    "block": 4
+   },
+   {
+    "text": "Corrente",
+    "box": {
+     "x": 98,
+     "y": 1022,
+     "width": 99,
+     "height": 26
+    },
+    "block": 4
+   },
+   {
+    "text": "Chave Autom ática de Tensão",
+    "box": {
+     "x": 79,
+     "y": 867,
+     "width": 336,
+     "height": 45
+    },
+    "block": 5
+   },
+   {
+    "text": "if aj t Input Voltage",
+    "box": {
+     "x": 87,
+     "y": 887,
+     "width": 347,
+     "height": 51
+    },
+    "block": 5
+   },
+   {
+    "text": "Auto Voltage",
+    "box": {
+     "x": 273,
+     "y": 819,
+     "width": 146,
+     "height": 33
+    },
+    "block": 6
+   },
+   {
+    "text": "Range",
+    "box": {
+     "x": 274,
+     "y": 853,
+     "width": 78,
+     "height": 24
+    },
+    "block": 6
+   },
+   {
+    "text": "f tA:100-240 VAC (V ca)",
+    "box": {
+     "x": 104,
+     "y": 901,
+     "width": 412,
+     "height": 59
+    },
+    "block": 7
+   },
+   {
+    "text": "Tensao de Entrada :De 100 até 24O Vac",
+    "box": {
+     "x": 86,
+     "y": 925,
+     "width": 449,
+     "height": 60
+    },
+    "block": 7
+   },
+   {
+    "text": "Čurrent",
+    "box": {
+     "x": 280,
+     "y": 959,
+     "width": 95,
+     "height": 25
+    },
+    "block": 7
+   },
+   {
+    "text": "TUNane",
+    "box": {
+     "x": 131,
+     "y": 1161,
+     "width": 65,
+     "height": 9
+    },
+    "block": 8
+   },
+   {
+    "text": "ZT230",
+    "box": {
+     "x": 418,
+     "y": 652,
+     "width": 115,
+     "height": 45
+    },
+    "block": 9
+   },
+   {
+    "text": ":2,8A",
+    "box": {
+     "x": 289,
+     "y": 990,
+     "width": 58,
+     "height": 20
+    },
+    "block": 10
+   },
+   {
+    "text": ":2,8A",
+    "box": {
+     "x": 295,
+     "y": 1012,
+     "width": 55,
+     "height": 19
+    },
+    "block": 11
+   },
+   {
+    "text": "Frequency",
+    "box": {
+     "x": 164,
+     "y": 1034,
+     "width": 115,
+     "height": 29
+    },
+    "block": 12
+   },
+   {
+    "text": ":47-63 Hz",
+    "box": {
+     "x": 169,
+     "y": 1053,
+     "width": 105,
+     "height": 33
+    },
+    "block": 12
+   },
+   {
+    "text": "Frequên cia : 50-60Hz",
+    "box": {
+     "x": 118,
+     "y": 1071,
+     "width": 226,
+     "height": 43
+    },
+    "block": 12
+   },
+   {
+    "text": "us R39706",
+    "box": {
+     "x": 199,
+     "y": 1167,
+     "width": 112,
+     "height": 26
+    },
+    "block": 13
+   },
+   {
+    "text": "22484001 RoHS",
+    "box": {
+     "x": 118,
+     "y": 1184,
+     "width": 178,
+     "height": 35
+    },
+    "block": 13
+   },
+   {
+    "text": "TM",
+    "box": {
+     "x": 565,
+     "y": 632,
+     "width": 40,
+     "height": 23
+    },
+    "block": 14
+   },
+   {
+    "text": "ERLCEE",
+    "box": {
+     "x": 405,
+     "y": 942,
+     "width": 241,
+     "height": 94
+    },
+    "block": 15
+   },
+   {
+    "text": "IS 13252 (Part 1)/",
+    "box": {
+     "x": 438,
+     "y": 1026,
+     "width": 174,
+     "height": 36
+    },
+    "block": 16
+   },
+   {
+    "text": "IEC 60960-1",
+    "box": {
+     "x": 466,
+     "y": 1049,
+     "width": 119,
+     "height": 37
+    },
+    "block": 16
+   },
+   {
+    "text": "ArpoA",
+    "box": {
+     "x": 658,
+     "y": 876,
+     "width": 89,
+     "height": 24
+    },
+    "block": 17
+   },
+   {
+    "text": "www.bis.gov.in",
+    "box": {
+     "x": 460,
+     "y": 1165,
+     "width": 136,
+     "height": 27
+    },
+    "block": 18
+   },
+   {
+    "text": "RAJ686792E",
+    "box": {
+     "x": 707,
+     "y": 900,
+     "width": 119,
+     "height": 28
+    },
+    "block": 19
+   },
+   {
+    "text": "Sequrança",
+    "box": {
+     "x": 692,
+     "y": 1035,
+     "width": 109,
+     "height": 29
+    },
+    "block": 20
+   },
+   {
+    "text": "oCP 0004",
+    "box": {
+     "x": 768,
+     "y": 1102,
+     "width": 55,
+     "height": 11
+    },
+    "block": 21
+   },
+   {
+    "text": "KCC-REM-ZTC-ZT220EXLAN11N",
+    "box": {
+     "x": 602,
+     "y": 1110,
+     "width": 218,
+     "height": 37
+    },
+    "block": 22
+   },
+   {
+    "text": "XU100096-15009À",
+    "box": {
+     "x": 634,
+     "y": 1147,
+     "width": 154,
+     "height": 30
+    },
+    "block": 22
+   },
+   {
+    "text": "UID#.",
+    "box": {
+     "x": 870,
+     "y": 478,
+     "width": 100,
+     "height": 27
+    },
+    "block": 23
+   },
+   {
+    "text": "ENERGY STAR",
+    "box": {
+     "x": 927,
+     "y": 900,
+     "width": 117,
+     "height": 29
+    },
+    "block": 24
+   },
+   {
+    "text": "CAN ICES-3 (B)/NNB-3(8)",
+    "box": {
+     "x": 891,
+     "y": 1009,
+     "width": 157,
+     "height": 30
+    },
+    "block": 25
+   },
+   {
+    "text": "MADE IN Vlet Nam",
+    "box": {
+     "x": 855,
+     "y": 1032,
+     "width": 176,
+     "height": 32
+    },
+    "block": 25
+   },
+   {
+    "text": "HECHO EN VIet Nam",
+    "box": {
+     "x": 845,
+     "y": 1052,
+     "width": 196,
+     "height": 37
+    },
+    "block": 25
+   },
+   {
+    "text": "R-41164208kcc-REM-ZTC-ZT230EXLANT1N Eabtogdo na Vlet Nam",
+    "box": {
+     "x": 454,
+     "y": 1127,
+     "width": 602,
+     "height": 39
+    },
+    "block": 26
+   }
+  ]
+ },
+ {
+  "file": "09.00.27.jpeg",
+  "width": 1600,
+  "height": 1200,
+  "barcodes": [
+   {
+    "value": "[)>\u001e05\u001d800466305699J242000740\u001e\u0004",
+    "format": "datamatrix",
+    "box": {
+     "x": 1259,
+     "y": 21,
+     "width": 99,
+     "height": 97
+    }
+   }
+  ],
+  "lines": [
+   {
+    "text": "2KA",
+    "box": {
+     "x": 648,
+     "y": 0,
+     "width": 147,
+     "height": 28
+    },
+    "block": 0
+   },
+   {
+    "text": "Zebra Technologles Corporation",
+    "box": {
+     "x": 587,
+     "y": 34,
+     "width": 313,
+     "height": 31
+    },
+    "block": 1
+   },
+   {
+    "text": "Model/Modelo",
+    "box": {
+     "x": 588,
+     "y": 62,
+     "width": 208,
+     "height": 27
+    },
+    "block": 1
+   },
+   {
+    "text": "Serial No./No. de Série",
+    "box": {
+     "x": 592,
+     "y": 135,
+     "width": 323,
+     "height": 25
+    },
+    "block": 2
+   },
+   {
+    "text": "F 99J242000740",
+    "box": {
+     "x": 633,
+     "y": 175,
+     "width": 227,
+     "height": 42
+    },
+    "block": 3
+   },
+   {
+    "text": "Chave Autom ática de",
+    "box": {
+     "x": 597,
+     "y": 275,
+     "width": 199,
+     "height": 21
+    },
+    "block": 4
+   },
+   {
+    "text": "Tensao de Entrada",
+    "box": {
+     "x": 595,
+     "y": 338,
+     "width": 173,
+     "height": 21
+    },
+    "block": 5
+   },
+   {
+    "text": "IF",
+    "box": {
+     "x": 651,
+     "y": 378,
+     "width": 37,
+     "height": 22
+    },
+    "block": 6
+   },
+   {
+    "text": "Corrente",
+    "box": {
+     "x": 596,
+     "y": 398,
+     "width": 83,
+     "height": 22
+    },
+    "block": 6
+   },
+   {
+    "text": "FCvO",
+    "box": {
+     "x": 589,
+     "y": 481,
+     "width": 124,
+     "height": 44
+    },
+    "block": 7
+   },
+   {
+    "text": "CAN ICES-J 5NO-J0)",
+    "box": {
+     "x": 592,
+     "y": 538,
+     "width": 132,
+     "height": 15
+    },
+    "block": 8
+   },
+   {
+    "text": "P1105959-001 RoHS",
+    "box": {
+     "x": 594,
+     "y": 557,
+     "width": 186,
+     "height": 18
+    },
+    "block": 8
+   },
+   {
+    "text": "Auto Voltage",
+    "box": {
+     "x": 784,
+     "y": 231,
+     "width": 120,
+     "height": 24
+    },
+    "block": 9
+   },
+   {
+    "text": "Range",
+    "box": {
+     "x": 784,
+     "y": 255,
+     "width": 58,
+     "height": 22
+    },
+    "block": 9
+   },
+   {
+    "text": "Tensoltage",
+    "box": {
+     "x": 798,
+     "y": 272,
+     "width": 114,
+     "height": 51
+    },
+    "block": 9
+   },
+   {
+    "text": "Frequency",
+    "box": {
+     "x": 649,
+     "y": 416,
+     "width": 97,
+     "height": 21
+    },
+    "block": 10
+   },
+   {
+    "text": ":S0-60 Hz",
+    "box": {
+     "x": 651,
+     "y": 436,
+     "width": 89,
+     "height": 22
+    },
+    "block": 10
+   },
+   {
+    "text": "Frequência : 50-60 Hz",
+    "box": {
+     "x": 598,
+     "y": 458,
+     "width": 199,
+     "height": 20
+    },
+    "block": 10
+   },
+   {
+    "text": "Input",
+    "box": {
+     "x": 784,
+     "y": 296,
+     "width": 50,
+     "height": 20
+    },
+    "block": 11
+   },
+   {
+    "text": ":100-240 VAC (V ca)",
+    "box": {
+     "x": 782,
+     "y": 314,
+     "width": 189,
+     "height": 23
+    },
+    "block": 12
+   },
+   {
+    "text": ":De 100 até 240 Vac",
+    "box": {
+     "x": 782,
+     "y": 338,
+     "width": 178,
+     "height": 21
+    },
+    "block": 12
+   },
+   {
+    "text": "Current",
+    "box": {
+     "x": 794,
+     "y": 354,
+     "width": 62,
+     "height": 21
+    },
+    "block": 12
+   },
+   {
+    "text": ":5A max",
+    "box": {
+     "x": 782,
+     "y": 378,
+     "width": 74,
+     "height": 19
+    },
+    "block": 13
+   },
+   {
+    "text": ":5A maI",
+    "box": {
+     "x": 783,
+     "y": 399,
+     "width": 75,
+     "height": 19
+    },
+    "block": 13
+   },
+   {
+    "text": "ZEBRA",
+    "box": {
+     "x": 664,
+     "y": 630,
+     "width": 130,
+     "height": 45
+    },
+    "block": 14
+   },
+   {
+    "text": "Complles with",
+    "box": {
+     "x": 618,
+     "y": 940,
+     "width": 135,
+     "height": 20
+    },
+    "block": 15
+   },
+   {
+    "text": "IMDA Standards",
+    "box": {
+     "x": 604,
+     "y": 958,
+     "width": 161,
+     "height": 23
+    },
+    "block": 15
+   },
+   {
+    "text": "DA103846",
+    "box": {
+     "x": 637,
+     "y": 983,
+     "width": 98,
+     "height": 17
+    },
+    "block": 15
+   },
+   {
+    "text": "ICT",
+    "box": {
+     "x": 652,
+     "y": 1090,
+     "width": 32,
+     "height": 15
+    },
+    "block": 16
+   },
+   {
+    "text": "R-C-ZTC-ZT4",
+    "box": {
+     "x": 808,
+     "y": 528,
+     "width": 73,
+     "height": 15
+    },
+    "block": 17
+   },
+   {
+    "text": "RI9708 XU100096-14002A",
+    "box": {
+     "x": 740,
+     "y": 546,
+     "width": 174,
+     "height": 18
+    },
+    "block": 17
+   },
+   {
+    "text": "Zobra Technologlea Corporatlon",
+    "box": {
+     "x": 594,
+     "y": 678,
+     "width": 290,
+     "height": 28
+    },
+    "block": 18
+   },
+   {
+    "text": "ZT411",
+    "box": {
+     "x": 887,
+     "y": 85,
+     "width": 131,
+     "height": 38
+    },
+    "block": 19
+   },
+   {
+    "text": "TRA",
+    "box": {
+     "x": 661,
+     "y": 801,
+     "width": 60,
+     "height": 24
+    },
+    "block": 20
+   },
+   {
+    "text": "REGISTERED NO:",
+    "box": {
+     "x": 601,
+     "y": 829,
+     "width": 186,
+     "height": 19
+    },
+    "block": 20
+   },
+   {
+    "text": "ER73472/19",
+    "box": {
+     "x": 635,
+     "y": 849,
+     "width": 109,
+     "height": 19
+    },
+    "block": 20
+   },
+   {
+    "text": "ER73473/19",
+    "box": {
+     "x": 640,
+     "y": 870,
+     "width": 105,
+     "height": 16
+    },
+    "block": 20
+   },
+   {
+    "text": "DEALER No:",
+    "box": {
+     "x": 623,
+     "y": 890,
+     "width": 140,
+     "height": 18
+    },
+    "block": 20
+   },
+   {
+    "text": "DA0071480/11",
+    "box": {
+     "x": 637,
+     "y": 912,
+     "width": 112,
+     "height": 13
+    },
+    "block": 20
+   },
+   {
+    "text": "Part Number: ZT41142- TOAO000Z",
+    "box": {
+     "x": 594,
+     "y": 712,
+     "width": 430,
+     "height": 34
+    },
+    "block": 21
+   },
+   {
+    "text": "Sertifikat Number: 65617/S DPPU2020",
+    "box": {
+     "x": 887,
+     "y": 371,
+     "width": 312,
+     "height": 19
+    },
+    "block": 22
+   },
+   {
+    "text": "PLG ID: 1226",
+    "box": {
+     "x": 887,
+     "y": 396,
+     "width": 109,
+     "height": 16
+    },
+    "block": 22
+   },
+   {
+    "text": "Us0O11900003",
+    "box": {
+     "x": 849,
+     "y": 852,
+     "width": 91,
+     "height": 14
+    },
+    "block": 23
+   },
+   {
+    "text": "08735-17-05041",
+    "box": {
+     "x": 727,
+     "y": 1077,
+     "width": 150,
+     "height": 20
+    },
+    "block": 24
+   },
+   {
+    "text": "UA.TR.1OB",
+    "box": {
+     "x": 988,
+     "y": 362,
+     "width": 69,
+     "height": 11
+    },
+    "block": 25
+   },
+   {
+    "text": "IS 13252 (Part 1)/",
+    "box": {
+     "x": 962,
+     "y": 420,
+     "width": 146,
+     "height": 21
+    },
+    "block": 26
+   },
+   {
+    "text": "IEC 60950-1",
+    "box": {
+     "x": 983,
+     "y": 439,
+     "width": 103,
+     "height": 23
+    },
+    "block": 26
+   },
+   {
+    "text": "TA-2019U1994",
+    "box": {
+     "x": 884,
+     "y": 930,
+     "width": 92,
+     "height": 18
+    },
+    "block": 27
+   },
+   {
+    "text": "TA 2010105",
+    "box": {
+     "x": 886,
+     "y": 941,
+     "width": 92,
+     "height": 25
+    },
+    "block": 27
+   },
+   {
+    "text": "R-41004481",
+    "box": {
+     "x": 971,
+     "y": 520,
+     "width": 123,
+     "height": 24
+    },
+    "block": 28
+   },
+   {
+    "text": "www.bis.gov.in",
+    "box": {
+     "x": 972,
+     "y": 544,
+     "width": 116,
+     "height": 20
+    },
+    "block": 28
+   },
+   {
+    "text": "ANATELTP",
+    "box": {
+     "x": 767,
+     "y": 1024,
+     "width": 218,
+     "height": 60
+    },
+    "block": 29
+   },
+   {
+    "text": "MC-V 3983759 ENA",
+    "box": {
+     "x": 1084,
+     "y": 336,
+     "width": 159,
+     "height": 19
+    },
+    "block": 30
+   },
+   {
+    "text": "meumo",
+    "box": {
+     "x": 901,
+     "y": 1133,
+     "width": 51,
+     "height": 9
+    },
+    "block": 31
+   },
+   {
+    "text": "HO05 19",
+    "box": {
+     "x": 1000,
+     "y": 1080,
+     "width": 69,
+     "height": 16
+    },
+    "block": 32
+   },
+   {
+    "text": "NTC",
+    "box": {
+     "x": 1105,
+     "y": 866,
+     "width": 81,
+     "height": 35
+    },
+    "block": 33
+   },
+   {
+    "text": "Type",
+    "box": {
+     "x": 1112,
+     "y": 899,
+     "width": 33,
+     "height": 21
+    },
+    "block": 34
+   },
+   {
+    "text": "APPROVEDIFT RCPTECC19-0829",
+    "box": {
+     "x": 883,
+     "y": 990,
+     "width": 263,
+     "height": 21
+    },
+    "block": 35
+   },
+   {
+    "text": "3R2It-19080s coTAINS MCC ID:",
+    "box": {
+     "x": 1044,
+     "y": 811,
+     "width": 303,
+     "height": 29
+    },
+    "block": 36
+   },
+   {
+    "text": "R",
+    "box": {
+     "x": 1091,
+     "y": 1018,
+     "width": 68,
+     "height": 56
+    },
+    "block": 37
+   },
+   {
+    "text": "Eato equlpamanto opera em carkter aecundarlo, lato , nao",
+    "box": {
+     "x": 723,
+     "y": 1100,
+     "width": 409,
+     "height": 15
+    },
+    "block": 38
+   },
+   {
+    "text": "tom dirto a protecho contra intartanela projudicia.",
+    "box": {
+     "x": 745,
+     "y": 1117,
+     "width": 369,
+     "height": 16
+    },
+    "block": 38
+   },
+   {
+    "text": "P110589-003 Interferanclaa slstemaa operando em caráter prtmàrlo",
+    "box": {
+     "x": 601,
+     "y": 1141,
+     "width": 510,
+     "height": 16
+    },
+    "block": 38
+   },
+   {
+    "text": "ESDDted",
+    "box": {
+     "x": 1137,
+     "y": 897,
+     "width": 93,
+     "height": 40
+    },
+    "block": 39
+   },
+   {
+    "text": "1920885G",
+    "box": {
+     "x": 1185,
+     "y": 919,
+     "width": 79,
+     "height": 18
+    },
+    "block": 40
+   },
+   {
+    "text": "No. ESD-1920864C",
+    "box": {
+     "x": 1110,
+     "y": 937,
+     "width": 147,
+     "height": 19
+    },
+    "block": 40
+   },
+   {
+    "text": "Contains FCC ID: I28-ZBRZO39T",
+    "box": {
+     "x": 992,
+     "y": 959,
+     "width": 227,
+     "height": 13
+    },
+    "block": 40
+   },
+   {
+    "text": "IC ID 3798B-ZBRZQIET",
+    "box": {
+     "x": 1052,
+     "y": 973,
+     "width": 169,
+     "height": 16
+    },
+    "block": 40
+   },
+   {
+    "text": "23928",
+    "box": {
+     "x": 1113,
+     "y": 1076,
+     "width": 46,
+     "height": 18
+    },
+    "block": 41
+   },
+   {
+    "text": "TUVRend",
+    "box": {
+     "x": 1298,
+     "y": 298,
+     "width": 76,
+     "height": 12
+    },
+    "block": 42
+   },
+   {
+    "text": "Segurança",
+    "box": {
+     "x": 1238,
+     "y": 350,
+     "width": 126,
+     "height": 32
+    },
+    "block": 43
+   },
+   {
+    "text": "MADE IN China",
+    "box": {
+     "x": 1203,
+     "y": 473,
+     "width": 130,
+     "height": 16
+    },
+    "block": 44
+   },
+   {
+    "text": "HECHO EN China",
+    "box": {
+     "x": 1192,
+     "y": 494,
+     "width": 148,
+     "height": 16
+    },
+    "block": 44
+   },
+   {
+    "text": "Fabricado na China",
+    "box": {
+     "x": 1183,
+     "y": 562,
+     "width": 166,
+     "height": 18
+    },
+    "block": 45
+   },
+   {
+    "text": "OCP 0004",
+    "box": {
+     "x": 1319,
+     "y": 444,
+     "width": 66,
+     "height": 10
+    },
+    "block": 46
+   },
+   {
+    "text": "ENCRGY STAR",
+    "box": {
+     "x": 1246,
+     "y": 712,
+     "width": 99,
+     "height": 19
+    },
+    "block": 47
+   },
+   {
+    "text": "cCAP1BLP5290T2",
+    "box": {
+     "x": 1214,
+     "y": 835,
+     "width": 135,
+     "height": 19
+    },
+    "block": 48
+   },
+   {
+    "text": "GCAP1BLPS201T4",
+    "box": {
+     "x": 1216,
+     "y": 855,
+     "width": 129,
+     "height": 15
+    },
+    "block": 48
+   },
+   {
+    "text": "US",
+    "box": {
+     "x": 1375,
+     "y": 332,
+     "width": 17,
+     "height": 11
+    },
+    "block": 49
+   },
+   {
+    "text": "T400 Serios",
+    "box": {
+     "x": 1219,
+     "y": 1141,
+     "width": 101,
+     "height": 18
+    },
+    "block": 50
+   }
+  ]
+ },
+ {
+  "file": "09.00.30.jpeg",
+  "width": 1200,
+  "height": 1600,
+  "barcodes": [
+   {
+    "value": "ZT231",
+    "format": "code128",
+    "box": {
+     "x": 437,
+     "y": 222,
+     "width": 207,
+     "height": 92
+    }
+   },
+   {
+    "value": "ZT23142-T0A000FZ",
+    "format": "code128",
+    "box": {
+     "x": 139,
+     "y": 402,
+     "width": 676,
+     "height": 183
+    }
+   },
+   {
+    "value": "T3N232800835",
+    "format": "code128",
+    "box": {
+     "x": 119,
+     "y": 674,
+     "width": 596,
+     "height": 106
+    }
+   },
+   {
+    "value": "07/16/2023",
+    "format": "code128",
+    "box": {
+     "x": 277,
+     "y": 1308,
+     "width": 498,
+     "height": 20
+    }
+   }
+  ],
+  "lines": [
+   {
+    "text": "Quantity/Quantidade Model/Modelo",
+    "box": {
+     "x": 117,
+     "y": 178,
+     "width": 527,
+     "height": 57
+    },
+    "block": 0
+   },
+   {
+    "text": "1",
+    "box": {
+     "x": 196,
+     "y": 310,
+     "width": 14,
+     "height": 38
+    },
+    "block": 1
+   },
+   {
+    "text": "ZT231",
+    "box": {
+     "x": 431,
+     "y": 319,
+     "width": 112,
+     "height": 45
+    },
+    "block": 2
+   },
+   {
+    "text": "Part Number/Número da peça",
+    "box": {
+     "x": 119,
+     "y": 383,
+     "width": 423,
+     "height": 53
+    },
+    "block": 3
+   },
+   {
+    "text": "ZT23142-TOAO00FZ",
+    "box": {
+     "x": 199,
+     "y": 530,
+     "width": 699,
+     "height": 94
+    },
+    "block": 4
+   },
+   {
+    "text": "Serial Number / Numero de Serie",
+    "box": {
+     "x": 111,
+     "y": 633,
+     "width": 468,
+     "height": 47
+    },
+    "block": 5
+   },
+   {
+    "text": "T3N232800835",
+    "box": {
+     "x": 252,
+     "y": 765,
+     "width": 285,
+     "height": 52
+    },
+    "block": 6
+   },
+   {
+    "text": "Chave Automática de Tensão",
+    "box": {
+     "x": 131,
+     "y": 897,
+     "width": 417,
+     "height": 41
+    },
+    "block": 7
+   },
+   {
+    "text": "Tensao de Entrada :De 100 até 240 Vac",
+    "box": {
+     "x": 105,
+     "y": 961,
+     "width": 606,
+     "height": 38
+    },
+    "block": 8
+   },
+   {
+    "text": "Corrente / Potência :4A",
+    "box": {
+     "x": 106,
+     "y": 1022,
+     "width": 353,
+     "height": 30
+    },
+    "block": 9
+   },
+   {
+    "text": "Frequência : De 47 até 63 Hz",
+    "box": {
+     "x": 105,
+     "y": 1080,
+     "width": 442,
+     "height": 33
+    },
+    "block": 10
+   },
+   {
+    "text": "Date/Data",
+    "box": {
+     "x": 94,
+     "y": 1282,
+     "width": 144,
+     "height": 30
+    },
+    "block": 11
+   },
+   {
+    "text": "Zebra Technologies do Brazil",
+    "box": {
+     "x": 92,
+     "y": 1163,
+     "width": 570,
+     "height": 44
+    },
+    "block": 12
+   },
+   {
+    "text": "CNPA 09.021935/0001-29",
+    "box": {
+     "x": 119,
+     "y": 1211,
+     "width": 509,
+     "height": 39
+    },
+    "block": 12
+   },
+   {
+    "text": "07/16/2023",
+    "box": {
+     "x": 341,
+     "y": 1354,
+     "width": 168,
+     "height": 31
+    },
+    "block": 13
+   },
+   {
+    "text": "ZEB",
+    "box": {
+     "x": 1095,
+     "y": 278,
+     "width": 100,
+     "height": 88
+    },
+    "block": 14
+   },
+   {
+    "text": "Country of Origin/Pais de orig",
+    "box": {
+     "x": 819,
+     "y": 909,
+     "width": 380,
+     "height": 49
+    },
+    "block": 15
+   },
+   {
+    "text": "Viet Nam",
+    "box": {
+     "x": 962,
+     "y": 1024,
+     "width": 154,
+     "height": 40
+    },
+    "block": 16
+   }
+  ]
+ },
+ {
+  "file": "09.00.31.jpeg",
+  "width": 1200,
+  "height": 1600,
+  "barcodes": [
+   {
+    "value": "13317000503377",
+    "format": "code128",
+    "box": {
+     "x": 377,
+     "y": 938,
+     "width": 475,
+     "height": 76
+    }
+   }
+  ],
+  "lines": [
+   {
+    "text": "R32626",
+    "box": {
+     "x": 504,
+     "y": 4,
+     "width": 33,
+     "height": 79
+    },
+    "block": 0
+   },
+   {
+    "text": "1AMov13",
+    "box": {
+     "x": 401,
+     "y": 906,
+     "width": 104,
+     "height": 28
+    },
+    "block": 1
+   },
+   {
+    "text": "MFD:",
+    "box": {
+     "x": 353,
+     "y": 920,
+     "width": 57,
+     "height": 24
+    },
+    "block": 2
+   },
+   {
+    "text": "KCC-RE",
+    "box": {
+     "x": 671,
+     "y": -4,
+     "width": 30,
+     "height": 76
+    },
+    "block": 3
+   },
+   {
+    "text": "LED LIGHT-DO NOT MEW DIRECTLY WITH OPTICAL",
+    "box": {
+     "x": 607,
+     "y": 150,
+     "width": 43,
+     "height": 532
+    },
+    "block": 4
+   },
+   {
+    "text": "INSTRUMENTS. CLASS 1M LED PRODUCT. LED-LICHT-",
+    "box": {
+     "x": 632,
+     "y": 135,
+     "width": 44,
+     "height": 572
+    },
+    "block": 4
+   },
+   {
+    "text": "SEHEN SIE MICHT DIRE",
+    "box": {
+     "x": 668,
+     "y": 490,
+     "width": 31,
+     "height": 214
+    },
+    "block": 4
+   },
+   {
+    "text": "KT MIT OPTISCHEN INS TRUME NT. AM",
+    "box": {
+     "x": 655,
+     "y": 126,
+     "width": 37,
+     "height": 359
+    },
+    "block": 4
+   },
+   {
+    "text": "PRODUKT der KATEGORIEN-1M LED. LUMIERE DE LED. NE",
+    "box": {
+     "x": 681,
+     "y": 120,
+     "width": 41,
+     "height": 581
+    },
+    "block": 4
+   },
+   {
+    "text": "REGARDEZ PAS DIREC TEMENT AVEC LES INSTRUMENTS",
+    "box": {
+     "x": 705,
+     "y": 126,
+     "width": 41,
+     "height": 571
+    },
+    "block": 4
+   },
+   {
+    "text": "OPTIQUES. PRODUT DE LA CLASSE 1M LED.",
+    "box": {
+     "x": 733,
+     "y": 230,
+     "width": 38,
+     "height": 464
+    },
+    "block": 4
+   },
+   {
+    "text": "LED 79t R 1M",
+    "box": {
+     "x": 763,
+     "y": 331,
+     "width": 42,
+     "height": 361
+    },
+    "block": 4
+   },
+   {
+    "text": "LED A",
+    "box": {
+     "x": 757,
+     "y": 118,
+     "width": 35,
+     "height": 148
+    },
+    "block": 5
+   },
+   {
+    "text": "MOTOROLA SOL UTIONS, INC. MA DE IN MEXICO",
+    "box": {
+     "x": 357,
+     "y": 813,
+     "width": 554,
+     "height": 57
+    },
+    "block": 6
+   },
+   {
+    "text": "PINDSBONRRnnODAMMAN (ÄS",
+    "box": {
+     "x": 353,
+     "y": 850,
+     "width": 438,
+     "height": 55
+    },
+    "block": 6
+   },
+   {
+    "text": "SN:13317000503377",
+    "box": {
+     "x": 383,
+     "y": 1015,
+     "width": 229,
+     "height": 38
+    },
+    "block": 7
+   },
+   {
+    "text": "ICESNMB 003 CLASS B",
+    "box": {
+     "x": 368,
+     "y": 1051,
+     "width": 233,
+     "height": 28
+    },
+    "block": 7
+   },
+   {
+    "text": "CAUTION -1M LED LIGHT WHEN OPEN.DO NOT VIEW",
+    "box": {
+     "x": 863,
+     "y": 121,
+     "width": 38,
+     "height": 595
+    },
+    "block": 8
+   },
+   {
+    "text": "DIRECTLY WTH OPTICAL INSTRUMENTS. ATTENTION -1MLED",
+    "box": {
+     "x": 884,
+     "y": 71,
+     "width": 39,
+     "height": 644
+    },
+    "block": 8
+   },
+   {
+    "text": "SI OUVERI. NE REGARDEZ AAS DIREC TEMENT AVEC LES",
+    "box": {
+     "x": 909,
+     "y": 153,
+     "width": 37,
+     "height": 563
+    },
+    "block": 8
+   },
+   {
+    "text": "INSTRUMENTS OPTIQUEs. VORSICHT - LICHT DER",
+    "box": {
+     "x": 929,
+     "y": 192,
+     "width": 37,
+     "height": 531
+    },
+    "block": 8
+   },
+   {
+    "text": ")",
+    "box": {
+     "x": 913,
+     "y": 844,
+     "width": 10,
+     "height": 35
+    },
+    "block": 9
+   },
+   {
+    "text": "MODEL:() DS9208",
+    "box": {
+     "x": 648,
+     "y": 888,
+     "width": 286,
+     "height": 43
+    },
+    "block": 10
+   },
+   {
+    "text": "SBRE",
+    "box": {
+     "x": 856,
+     "y": 1006,
+     "width": 54,
+     "height": 22
+    },
+    "block": 11
+   },
+   {
+    "text": "4.5-5.5V m 500 mA",
+    "box": {
+     "x": 723,
+     "y": 1036,
+     "width": 200,
+     "height": 29
+    },
+    "block": 12
+   },
+   {
+    "text": "KATE GONEN. 1M LED WENN GEOFFNET. SEHEN SIE NICHT",
+    "box": {
+     "x": 951,
+     "y": 109,
+     "width": 38,
+     "height": 606
+    },
+    "block": 13
+   },
+   {
+    "text": "DIREKT MIT OPTISCHEN INSTRUME NTEN.",
+    "box": {
+     "x": 976,
+     "y": 297,
+     "width": 35,
+     "height": 419
+    },
+    "block": 13
+   },
+   {
+    "text": "COMPLIES WTH IECENO0825 1:2001 & IECEN62471:2006/8",
+    "box": {
+     "x": 995,
+     "y": 126,
+     "width": 36,
+     "height": 584
+    },
+    "block": 14
+   }
+  ]
+ },
+ {
+  "file": "09.00.318.jpeg",
+  "width": 1200,
+  "height": 1600,
+  "barcodes": [
+   {
+    "value": "D5J242300912",
+    "format": "code128",
+    "box": {
+     "x": 553,
+     "y": 790,
+     "width": 38,
+     "height": 664
+    }
+   },
+   {
+    "value": "ZD22042-T0AG00EZ",
+    "format": "code128",
+    "box": {
+     "x": 494,
+     "y": 217,
+     "width": 571,
+     "height": 78
+    }
+   }
+  ],
+  "lines": [
+   {
+    "text": "ENERGY STAR",
+    "box": {
+     "x": 0,
+     "y": 1353,
+     "width": 29,
+     "height": 173
+    },
+    "block": 0
+   },
+   {
+    "text": "www.ble.gov.in",
+    "box": {
+     "x": 39,
+     "y": 784,
+     "width": 30,
+     "height": 162
+    },
+    "block": 1
+   },
+   {
+    "text": "R-41004481,",
+    "box": {
+     "x": 67,
+     "y": 794,
+     "width": 41,
+     "height": 174
+    },
+    "block": 1
+   },
+   {
+    "text": "Segurança",
+    "box": {
+     "x": 82,
+     "y": 988,
+     "width": 34,
+     "height": 168
+    },
+    "block": 2
+   },
+   {
+    "text": "A.TR. 100",
+    "box": {
+     "x": 121,
+     "y": 998,
+     "width": 21,
+     "height": 91
+    },
+    "block": 3
+   },
+   {
+    "text": "VEI",
+    "box": {
+     "x": 101,
+     "y": 1200,
+     "width": 34,
+     "height": 66
+    },
+    "block": 4
+   },
+   {
+    "text": "IEC 60950-1",
+    "box": {
+     "x": 186,
+     "y": 800,
+     "width": 37,
+     "height": 137
+    },
+    "block": 5
+   },
+   {
+    "text": "IS 13252 (Part 1y",
+    "box": {
+     "x": 220,
+     "y": 772,
+     "width": 31,
+     "height": 197
+    },
+    "block": 5
+   },
+   {
+    "text": "NOM",
+    "box": {
+     "x": 181,
+     "y": 1105,
+     "width": 63,
+     "height": 92
+    },
+    "block": 6
+   },
+   {
+    "text": "CAN (yN-",
+    "box": {
+     "x": 261,
+     "y": 984,
+     "width": 30,
+     "height": 145
+    },
+    "block": 7
+   },
+   {
+    "text": "TUniend",
+    "box": {
+     "x": 292,
+     "y": 1185,
+     "width": 14,
+     "height": 75
+    },
+    "block": 8
+   },
+   {
+    "text": "ER",
+    "box": {
+     "x": 263,
+     "y": 1310,
+     "width": 109,
+     "height": 105
+    },
+    "block": 9
+   },
+   {
+    "text": "RoHS",
+    "box": {
+     "x": 252,
+     "y": 1442,
+     "width": 26,
+     "height": 66
+    },
+    "block": 10
+   },
+   {
+    "text": "RI9706",
+    "box": {
+     "x": 274,
+     "y": 1441,
+     "width": 30,
+     "height": 85
+    },
+    "block": 10
+   },
+   {
+    "text": "#AMtg Dete/Data de fabrlcaçáo: AE:",
+    "box": {
+     "x": 488,
+     "y": 767,
+     "width": 50,
+     "height": 750
+    },
+    "block": 11
+   },
+   {
+    "text": "Febricado na China",
+    "box": {
+     "x": 383,
+     "y": 1025,
+     "width": 38,
+     "height": 240
+    },
+    "block": 12
+   },
+   {
+    "text": "MADE IN China",
+    "box": {
+     "x": 416,
+     "y": 1049,
+     "width": 37,
+     "height": 184
+    },
+    "block": 12
+   },
+   {
+    "text": "06/04/2024",
+    "box": {
+     "x": 460,
+     "y": 1051,
+     "width": 36,
+     "height": 162
+    },
+    "block": 12
+   },
+   {
+    "text": "D5J242300912",
+    "box": {
+     "x": 617,
+     "y": 1030,
+     "width": 47,
+     "height": 260
+    },
+    "block": 13
+   },
+   {
+    "text": "Sorlal NoNo. de Sérle",
+    "box": {
+     "x": 663,
+     "y": 983,
+     "width": 35,
+     "height": 331
+    },
+    "block": 13
+   },
+   {
+    "text": "ZD22042-TOAGOOEZ",
+    "box": {
+     "x": 705,
+     "y": 296,
+     "width": 368,
+     "height": 46
+    },
+    "block": 14
+   },
+   {
+    "text": "Part Number",
+    "box": {
+     "x": 889,
+     "y": 341,
+     "width": 186,
+     "height": 41
+    },
+    "block": 14
+   },
+   {
+    "text": "A: 24Vdc;2.8A (2,BA)",
+    "box": {
+     "x": 709,
+     "y": 813,
+     "width": 41,
+     "height": 468
+    },
+    "block": 15
+   },
+   {
+    "text": "3; Input Power/Teneao de Entrada",
+    "box": {
+     "x": 752,
+     "y": 913,
+     "width": 49,
+     "height": 446
+    },
+    "block": 15
+   },
+   {
+    "text": "D220t EDH",
+    "box": {
+     "x": 821,
+     "y": 905,
+     "width": 63,
+     "height": 267
+    },
+    "block": 16
+   },
+   {
+    "text": "Model/Modelo",
+    "box": {
+     "x": 880,
+     "y": 765,
+     "width": 35,
+     "height": 219
+    },
+    "block": 17
+   },
+   {
+    "text": "Patents: lp.zebra.com",
+    "box": {
+     "x": 927,
+     "y": 772,
+     "width": 30,
+     "height": 261
+    },
+    "block": 17
+   },
+   {
+    "text": "Zebra Teahnologlee Corportlon",
+    "box": {
+     "x": 961,
+     "y": 766,
+     "width": 40,
+     "height": 417
+    },
+    "block": 17
+   },
+   {
+    "text": "ZEBRA",
+    "box": {
+     "x": 1003,
+     "y": 876,
+     "width": 72,
+     "height": 168
+    },
+    "block": 18
+   },
+   {
+    "text": "UND.",
+    "box": {
+     "x": 1067,
+     "y": 1395,
+     "width": 19,
+     "height": 68
+    },
+    "block": 19
+   }
+  ]
+ },
+ {
+  "file": "09.00.32.jpeg",
+  "width": 1200,
+  "height": 1600,
+  "barcodes": [
+   {
+    "value": "787D53FB98C0",
+    "format": "code128",
+    "box": {
+     "x": 143,
+     "y": 939,
+     "width": 417,
+     "height": 56
+    }
+   },
+   {
+    "value": "03052211308046",
+    "format": "code128",
+    "box": {
+     "x": 118,
+     "y": 856,
+     "width": 473,
+     "height": 68
+    }
+   },
+   {
+    "value": "AP305C-1-WR",
+    "format": "code128",
+    "box": {
+     "x": 667,
+     "y": 927,
+     "width": 387,
+     "height": 44
+    }
+   },
+   {
+    "value": "169.254.152.192",
+    "format": "code128",
+    "box": {
+     "x": 665,
+     "y": 1000,
+     "width": 491,
+     "height": 38
+    }
+   }
+  ],
+  "lines": [
+   {
+    "text": "UMISSIO",
+    "box": {
+     "x": 7,
+     "y": 235,
+     "width": 78,
+     "height": 23
+    },
+    "block": 0
+   },
+   {
+    "text": "D-2202147C",
+    "box": {
+     "x": 0,
+     "y": 285,
+     "width": 147,
+     "height": 28
+    },
+    "block": 1
+   },
+   {
+    "text": "DX",
+    "box": {
+     "x": 1,
+     "y": 312,
+     "width": 53,
+     "height": 99
+    },
+    "block": 2
+   },
+   {
+    "text": "NOM-4",
+    "box": {
+     "x": 168,
+     "y": 123,
+     "width": 239,
+     "height": 135
+    },
+    "block": 3
+   },
+   {
+    "text": "NYCE",
+    "box": {
+     "x": 309,
+     "y": 230,
+     "width": 95,
+     "height": 35
+    },
+    "block": 4
+   },
+   {
+    "text": "RCPEXAP20-0140",
+    "box": {
+     "x": 157,
+     "y": 266,
+     "width": 266,
+     "height": 35
+    },
+    "block": 4
+   },
+   {
+    "text": "65933/SDPPI/2020",
+    "box": {
+     "x": 77,
+     "y": 328,
+     "width": 351,
+     "height": 55
+    },
+    "block": 5
+   },
+   {
+    "text": "6677",
+    "box": {
+     "x": 225,
+     "y": 392,
+     "width": 88,
+     "height": 34
+    },
+    "block": 5
+   },
+   {
+    "text": "REGISTERED No:",
+    "box": {
+     "x": 495,
+     "y": 221,
+     "width": 377,
+     "height": 53
+    },
+    "block": 6
+   },
+   {
+    "text": "ER77619/19",
+    "box": {
+     "x": 557,
+     "y": 281,
+     "width": 253,
+     "height": 46
+    },
+    "block": 6
+   },
+   {
+    "text": "TRA",
+    "box": {
+     "x": 609,
+     "y": 157,
+     "width": 139,
+     "height": 56
+    },
+    "block": 7
+   },
+   {
+    "text": "SN: 03052211308046",
+    "box": {
+     "x": 186,
+     "y": 908,
+     "width": 337,
+     "height": 43
+    },
+    "block": 8
+   },
+   {
+    "text": "MAC: 787D53FB98CO",
+    "box": {
+     "x": 179,
+     "y": 982,
+     "width": 344,
+     "height": 43
+    },
+    "block": 9
+   },
+   {
+    "text": "Dealer No:",
+    "box": {
+     "x": 556,
+     "y": 338,
+     "width": 211,
+     "height": 43
+    },
+    "block": 10
+   },
+   {
+    "text": "DA50832/16",
+    "box": {
+     "x": 554,
+     "y": 394,
+     "width": 250,
+     "height": 44
+    },
+    "block": 10
+   },
+   {
+    "text": "Patents Pending 510210 Rev. B",
+    "box": {
+     "x": 385,
+     "y": 523,
+     "width": 414,
+     "height": 41
+    },
+    "block": 11
+   },
+   {
+    "text": "Patents: www.extremenetworks.com/patents",
+    "box": {
+     "x": 383,
+     "y": 555,
+     "width": 564,
+     "height": 47
+    },
+    "block": 11
+   },
+   {
+    "text": "Extreme Networks, Inc. 2121 RDU Center Drive,",
+    "box": {
+     "x": 382,
+     "y": 587,
+     "width": 592,
+     "height": 52
+    },
+    "block": 11
+   },
+   {
+    "text": "CMIIT ID: 2020F",
+    "box": {
+     "x": 952,
+     "y": 248,
+     "width": 246,
+     "height": 39
+    },
+    "block": 12
+   },
+   {
+    "text": "P/N: AP305C-1-WR",
+    "box": {
+     "x": 667,
+     "y": 897,
+     "width": 297,
+     "height": 35
+    },
+    "block": 13
+   },
+   {
+    "text": "RC-EXR.APS",
+    "box": {
+     "x": 1048,
+     "y": 140,
+     "width": 163,
+     "height": 54
+    },
+    "block": 14
+   },
+   {
+    "text": "CCAH19LP941",
+    "box": {
+     "x": 996,
+     "y": 201,
+     "width": 201,
+     "height": 36
+    },
+    "block": 15
+   },
+   {
+    "text": "Morrisville, NC 27560 USA",
+    "box": {
+     "x": 674,
+     "y": 636,
+     "width": 329,
+     "height": 34
+    },
+    "block": 16
+   },
+   {
+    "text": "IP: 169.254.152.192",
+    "box": {
+     "x": 670,
+     "y": 967,
+     "width": 295,
+     "height": 37
+    },
+    "block": 17
+   },
+   {
+    "text": "Complies",
+    "box": {
+     "x": 1003,
+     "y": 305,
+     "width": 175,
+     "height": 53
+    },
+    "block": 18
+   },
+   {
+    "text": "IMDA Stand",
+    "box": {
+     "x": 977,
+     "y": 363,
+     "width": 221,
+     "height": 48
+    },
+    "block": 18
+   },
+   {
+    "text": "DA10697",
+    "box": {
+     "x": 1032,
+     "y": 424,
+     "width": 166,
+     "height": 44
+    },
+    "block": 18
+   },
+   {
+    "text": "Re",
+    "box": {
+     "x": 1162,
+     "y": 908,
+     "width": 30,
+     "height": 25
+    },
+    "block": 19
+   }
+  ]
+ },
+ {
+  "file": "09.00.33.jpeg",
+  "width": 1200,
+  "height": 1600,
+  "barcodes": [
+   {
+    "value": "S22192520100839",
+    "format": "datamatrix",
+    "box": {
+     "x": 246,
+     "y": 682,
+     "width": 118,
+     "height": 115
+    }
+   }
+  ],
+  "lines": [
+   {
+    "text": "D39706",
+    "box": {
+     "x": 223,
+     "y": 596,
+     "width": 85,
+     "height": 22
+    },
+    "block": 0
+   },
+   {
+    "text": "ZEBRA TECHNOLOGIES CORP., NY 11742",
+    "box": {
+     "x": 326,
+     "y": 461,
+     "width": 559,
+     "height": 30
+    },
+    "block": 1
+   },
+   {
+    "text": "BAR CODE SCANNER ( S fh %)",
+    "box": {
+     "x": 330,
+     "y": 494,
+     "width": 489,
+     "height": 27
+    },
+    "block": 1
+   },
+   {
+    "text": "MODEL (2):MS4717",
+    "box": {
+     "x": 342,
+     "y": 525,
+     "width": 321,
+     "height": 35
+    },
+    "block": 1
+   },
+   {
+    "text": "5V - 0.5A",
+    "box": {
+     "x": 328,
+     "y": 564,
+     "width": 174,
+     "height": 24
+    },
+    "block": 2
+   },
+   {
+    "text": "RoHS VCI",
+    "box": {
+     "x": 233,
+     "y": 613,
+     "width": 160,
+     "height": 42
+    },
+    "block": 3
+   },
+   {
+    "text": "R-R-ZTC-MS4717",
+    "box": {
+     "x": 666,
+     "y": 652,
+     "width": 195,
+     "height": 21
+    },
+    "block": 4
+   },
+   {
+    "text": "(S)S/N: 22192520100839",
+    "box": {
+     "x": 388,
+     "y": 686,
+     "width": 308,
+     "height": 26
+    },
+    "block": 5
+   },
+   {
+    "text": "PIN:MS4717-LU00OR",
+    "box": {
+     "x": 387,
+     "y": 721,
+     "width": 266,
+     "height": 21
+    },
+    "block": 6
+   },
+   {
+    "text": "MADE IN TAIWAN G#NK",
+    "box": {
+     "x": 390,
+     "y": 749,
+     "width": 421,
+     "height": 25
+    },
+    "block": 7
+   },
+   {
+    "text": "MFD: 11JUL22",
+    "box": {
+     "x": 390,
+     "y": 783,
+     "width": 185,
+     "height": 20
+    },
+    "block": 7
+   },
+   {
+    "text": "MS4717",
+    "box": {
+     "x": 542,
+     "y": 1319,
+     "width": 261,
+     "height": 70
+    },
+    "block": 8
+   },
+   {
+    "text": "C",
+    "box": {
+     "x": 882,
+     "y": 643,
+     "width": 11,
+     "height": 18
+    },
+    "block": 9
+   },
+   {
+    "text": "30",
+    "box": {
+     "x": 890,
+     "y": 506,
+     "width": 91,
+     "height": 60
+    },
+    "block": 10
+   },
+   {
+    "text": "E177793",
+    "box": {
+     "x": 898,
+     "y": 588,
+     "width": 71,
+     "height": 14
+    },
+    "block": 11
+   },
+   {
+    "text": "USTED",
+    "box": {
+     "x": 908,
+     "y": 682,
+     "width": 49,
+     "height": 18
+    },
+    "block": 12
+   },
+   {
+    "text": "LTE ACCESSORY",
+    "box": {
+     "x": 870,
+     "y": 702,
+     "width": 128,
+     "height": 14
+    },
+    "block": 12
+   },
+   {
+    "text": "WAGE",
+    "box": {
+     "x": 1062,
+     "y": 1438,
+     "width": 76,
+     "height": 31
+    },
+    "block": 13
+   }
+  ]
+ },
+ {
+  "file": "09.00.36.jpeg",
+  "width": 1600,
+  "height": 1200,
+  "barcodes": [
+   {
+    "value": "1PMS4717-LU000R",
+    "format": "code128",
+    "box": {
+     "x": 314,
+     "y": 447,
+     "width": 526,
+     "height": 113
+    }
+   },
+   {
+    "value": "1PMS4717-LU000R\tTW\tS22194520101338",
+    "format": "pdf417",
+    "box": {
+     "x": 1032,
+     "y": 519,
+     "width": 371,
+     "height": 138
+    }
+   },
+   {
+    "value": "S22194520101338",
+    "format": "code128",
+    "box": {
+     "x": 314,
+     "y": 642,
+     "width": 551,
+     "height": 118
+    }
+   },
+   {
+    "value": "2PF",
+    "format": "code128",
+    "box": {
+     "x": 309,
+     "y": 816,
+     "width": 181,
+     "height": 127
+    }
+   },
+   {
+    "value": "D13JUL22",
+    "format": "code128",
+    "box": {
+     "x": 606,
+     "y": 832,
+     "width": 314,
+     "height": 94
+    }
+   }
+  ],
+  "lines": [
+   {
+    "text": "MS4717",
+    "box": {
+     "x": 294,
+     "y": 194,
+     "width": 396,
+     "height": 82
+    },
+    "block": 0
+   },
+   {
+    "text": "Boxed Reader System",
+    "box": {
+     "x": 297,
+     "y": 314,
+     "width": 442,
+     "height": 56
+    },
+    "block": 1
+   },
+   {
+    "text": "(1P) P/N: MS4717-LU000R",
+    "box": {
+     "x": 304,
+     "y": 408,
+     "width": 520,
+     "height": 42
+    },
+    "block": 2
+   },
+   {
+    "text": "(S) SIN: 221945201 01 338",
+    "box": {
+     "x": 318,
+     "y": 606,
+     "width": 470,
+     "height": 40
+    },
+    "block": 3
+   },
+   {
+    "text": "(2P) REV: F",
+    "box": {
+     "x": 310,
+     "y": 791,
+     "width": 203,
+     "height": 41
+    },
+    "block": 4
+   },
+   {
+    "text": "(D) MFD: 13JUL22",
+    "box": {
+     "x": 610,
+     "y": 798,
+     "width": 320,
+     "height": 36
+    },
+    "block": 5
+   },
+   {
+    "text": "N ZEBRA",
+    "box": {
+     "x": 1110,
+     "y": 218,
+     "width": 376,
+     "height": 94
+    },
+    "block": 6
+   },
+   {
+    "text": "MADE IN TAIWAN",
+    "box": {
+     "x": 1045,
+     "y": 383,
+     "width": 349,
+     "height": 31
+    },
+    "block": 7
+   },
+   {
+    "text": "UK",
+    "box": {
+     "x": 1341,
+     "y": 685,
+     "width": 105,
+     "height": 49
+    },
+    "block": 8
+   },
+   {
+    "text": "IGEALC €",
+    "box": {
+     "x": 994,
+     "y": 796,
+     "width": 360,
+     "height": 119
+    },
+    "block": 9
+   },
+   {
+    "text": "R-R-ZTC-MS47 17",
+    "box": {
+     "x": 997,
+     "y": 911,
+     "width": 229,
+     "height": 20
+    },
+    "block": 10
+   }
+  ]
+ },
+ {
+  "file": "09.00.37.jpeg",
+  "width": 1200,
+  "height": 1600,
+  "barcodes": [],
+  "lines": [
+   {
+    "text": "E143267",
+    "box": {
+     "x": 434,
+     "y": 390,
+     "width": 47,
+     "height": 143
+    },
+    "block": 0
+   },
+   {
+    "text": "ZEBRA TECHNOLOGIES CORP.",
+    "box": {
+     "x": 351,
+     "y": 547,
+     "width": 62,
+     "height": 434
+    },
+    "block": 1
+   },
+   {
+    "text": "MODEL(",
+    "box": {
+     "x": 453,
+     "y": 851,
+     "width": 42,
+     "height": 116
+    },
+    "block": 1
+   },
+   {
+    "text": "HOLTSVILLE, NY 11742",
+    "box": {
+     "x": 401,
+     "y": 656,
+     "width": 53,
+     "height": 321
+    },
+    "block": 1
+   },
+   {
+    "text": "):DS9908",
+    "box": {
+     "x": 439,
+     "y": 612,
+     "width": 43,
+     "height": 144
+    },
+    "block": 2
+   },
+   {
+    "text": "P/N :DS9908-SRO0004ZZVwW",
+    "box": {
+     "x": 477,
+     "y": 580,
+     "width": 60,
+     "height": 387
+    },
+    "block": 3
+   },
+   {
+    "text": "US",
+    "box": {
+     "x": 538,
+     "y": 371,
+     "width": 32,
+     "height": 26
+    },
+    "block": 4
+   },
+   {
+    "text": "MFD :02SEP19 5201",
+    "box": {
+     "x": 557,
+     "y": 582,
+     "width": 47,
+     "height": 267
+    },
+    "block": 5
+   },
+   {
+    "text": "SIN: 19245520180264",
+    "box": {
+     "x": 527,
+     "y": 669,
+     "width": 53,
+     "height": 298
+    },
+    "block": 6
+   },
+   {
+    "text": "LISTED",
+    "box": {
+     "x": 609,
+     "y": 409,
+     "width": 40,
+     "height": 100
+    },
+    "block": 7
+   },
+   {
+    "text": "I.TE.",
+    "box": {
+     "x": 646,
+     "y": 425,
+     "width": 34,
+     "height": 64
+    },
+    "block": 7
+   },
+   {
+    "text": "MADE IN TAIWAN",
+    "box": {
+     "x": 600,
+     "y": 611,
+     "width": 46,
+     "height": 235
+    },
+    "block": 8
+   },
+   {
+    "text": "5V 0.5A",
+    "box": {
+     "x": 648,
+     "y": 682,
+     "width": 37,
+     "height": 164
+    },
+    "block": 8
+   },
+   {
+    "text": "R-R-ZTC-DS9908",
+    "box": {
+     "x": 763,
+     "y": 631,
+     "width": 44,
+     "height": 229
+    },
+    "block": 9
+   },
+   {
+    "text": "cE",
+    "box": {
+     "x": 817,
+     "y": 790,
+     "width": 144,
+     "height": 121
+    },
+    "block": 10
+   },
+   {
+    "text": "D39706",
+    "box": {
+     "x": 1151,
+     "y": 712,
+     "width": 33,
+     "height": 97
+    },
+    "block": 11
+   }
+  ]
+ },
+ {
+  "file": "09.00.38.jpeg",
+  "width": 1600,
+  "height": 1200,
+  "barcodes": [],
+  "lines": [
+   {
+    "text": "ZEBRA TECHNOLOGIES CORP.",
+    "box": {
+     "x": 148,
+     "y": 234,
+     "width": 235,
+     "height": 32
+    },
+    "block": 0
+   },
+   {
+    "text": "HOLTSVILLE, NY 11742",
+    "box": {
+     "x": 152,
+     "y": 262,
+     "width": 163,
+     "height": 28
+    },
+    "block": 0
+   },
+   {
+    "text": "RC-29659 E143267",
+    "box": {
+     "x": 402,
+     "y": 233,
+     "width": 274,
+     "height": 51
+    },
+    "block": 1
+   },
+   {
+    "text": "NOOEL DS227BA Pats.: ip.zebra.com",
+    "box": {
+     "x": 155,
+     "y": 290,
+     "width": 305,
+     "height": 26
+    },
+    "block": 2
+   },
+   {
+    "text": "sV1A",
+    "box": {
+     "x": 274,
+     "y": 314,
+     "width": 72,
+     "height": 23
+    },
+    "block": 2
+   },
+   {
+    "text": "CAN ICES-3 (B) NMB-3 (B)",
+    "box": {
+     "x": 270,
+     "y": 337,
+     "width": 195,
+     "height": 26
+    },
+    "block": 3
+   },
+   {
+    "text": "IC: 109AN-D$2278A",
+    "box": {
+     "x": 273,
+     "y": 359,
+     "width": 165,
+     "height": 29
+    },
+    "block": 3
+   },
+   {
+    "text": "FCC ID: UZ7DS2278A",
+    "box": {
+     "x": 276,
+     "y": 391,
+     "width": 181,
+     "height": 23
+    },
+    "block": 3
+   },
+   {
+    "text": "ANATEL RR-1C-DS2278A",
+    "box": {
+     "x": 163,
+     "y": 406,
+     "width": 226,
+     "height": 37
+    },
+    "block": 4
+   },
+   {
+    "text": "18715-23-08726",
+    "box": {
+     "x": 181,
+     "y": 433,
+     "width": 144,
+     "height": 29
+    },
+    "block": 4
+   },
+   {
+    "text": "LSTED",
+    "box": {
+     "x": 596,
+     "y": 350,
+     "width": 70,
+     "height": 28
+    },
+    "block": 5
+   },
+   {
+    "text": "1.TE.",
+    "box": {
+     "x": 615,
+     "y": 381,
+     "width": 45,
+     "height": 20
+    },
+    "block": 5
+   },
+   {
+    "text": "BD ADDR: C81CFEFEB5CD",
+    "box": {
+     "x": 713,
+     "y": 215,
+     "width": 283,
+     "height": 32
+    },
+    "block": 6
+   },
+   {
+    "text": "S/N: 25302523700953",
+    "box": {
+     "x": 714,
+     "y": 248,
+     "width": 230,
+     "height": 30
+    },
+    "block": 6
+   },
+   {
+    "text": "PIN: DS2278--SROO0072ZWW",
+    "box": {
+     "x": 715,
+     "y": 271,
+     "width": 317,
+     "height": 35
+    },
+    "block": 6
+   },
+   {
+    "text": "CCAF23LP1280T9",
+    "box": {
+     "x": 747,
+     "y": 361,
+     "width": 174,
+     "height": 38
+    },
+    "block": 7
+   },
+   {
+    "text": "D39706",
+    "box": {
+     "x": 991,
+     "y": 348,
+     "width": 98,
+     "height": 37
+    },
+    "block": 8
+   },
+   {
+    "text": "RoHS",
+    "box": {
+     "x": 1008,
+     "y": 379,
+     "width": 64,
+     "height": 24
+    },
+    "block": 8
+   },
+   {
+    "text": "R201.230489",
+    "box": {
+     "x": 957,
+     "y": 403,
+     "width": 135,
+     "height": 46
+    },
+    "block": 9
+   }
+  ]
+ },
+ {
+  "file": "09.00.40.jpeg",
+  "width": 1200,
+  "height": 1600,
+  "barcodes": [],
+  "lines": [
+   {
+    "text": "Factory ID: 5237",
+    "box": {
+     "x": 348,
+     "y": 586,
+     "width": 35,
+     "height": 192
+    },
+    "block": 0
+   },
+   {
+    "text": "MFD:07APR21",
+    "box": {
+     "x": 402,
+     "y": 585,
+     "width": 25,
+     "height": 164
+    },
+    "block": 1
+   },
+   {
+    "text": "(S) SIN: 21097523700980",
+    "box": {
+     "x": 446,
+     "y": 580,
+     "width": 32,
+     "height": 296
+    },
+    "block": 1
+   },
+   {
+    "text": "PIN: SAC-MC334SCHG-01",
+    "box": {
+     "x": 602,
+     "y": 580,
+     "width": 31,
+     "height": 361
+    },
+    "block": 2
+   },
+   {
+    "text": "Model ( ): SHARECRADLE-01",
+    "box": {
+     "x": 644,
+     "y": 580,
+     "width": 32,
+     "height": 352
+    },
+    "block": 2
+   },
+   {
+    "text": "Made in Vietnan ( )",
+    "box": {
+     "x": 681,
+     "y": 580,
+     "width": 33,
+     "height": 307
+    },
+    "block": 2
+   },
+   {
+    "text": "CAN ICES-3(B) / NMB-3(B)",
+    "box": {
+     "x": 719,
+     "y": 578,
+     "width": 29,
+     "height": 301
+    },
+    "block": 2
+   },
+   {
+    "text": "For use",
+    "box": {
+     "x": 758,
+     "y": 579,
+     "width": 25,
+     "height": 79
+    },
+    "block": 2
+   },
+   {
+    "text": "with MC33 series only",
+    "box": {
+     "x": 759,
+     "y": 667,
+     "width": 27,
+     "height": 247
+    },
+    "block": 2
+   },
+   {
+    "text": "12V 4.16A",
+    "box": {
+     "x": 795,
+     "y": 662,
+     "width": 27,
+     "height": 160
+    },
+    "block": 3
+   },
+   {
+    "text": "HOLTSVILLE, NY 11742",
+    "box": {
+     "x": 836,
+     "y": 579,
+     "width": 28,
+     "height": 271
+    },
+    "block": 4
+   },
+   {
+    "text": "ZEBRA TECHNOLOGIES",
+    "box": {
+     "x": 881,
+     "y": 575,
+     "width": 27,
+     "height": 288
+    },
+    "block": 4
+   },
+   {
+    "text": "CORP.",
+    "box": {
+     "x": 886,
+     "y": 872,
+     "width": 23,
+     "height": 74
+    },
+    "block": 4
+   },
+   {
+    "text": "ZEBRA",
+    "box": {
+     "x": 934,
+     "y": 727,
+     "width": 109,
+     "height": 202
+    },
+    "block": 5
+   }
+  ]
+ },
+ {
+  "file": "09.00.431.jpeg",
+  "width": 1600,
+  "height": 1200,
+  "barcodes": [
+   {
+    "value": "1PWLMT0-T22B6ABC2-A6\tVN\tS26172525700892",
+    "format": "pdf417",
+    "box": {
+     "x": 953,
+     "y": 357,
+     "width": 510,
+     "height": 224
+    }
+   },
+   {
+    "value": "1PWLMT0-T22B6ABC2-A6\tVN\tS26173525701443",
+    "format": "pdf417",
+    "box": {
+     "x": 868,
+     "y": 949,
+     "width": 464,
+     "height": 196
+    }
+   }
+  ],
+  "lines": [
+   {
+    "text": "ZEBRA",
+    "box": {
+     "x": 269,
+     "y": 355,
+     "width": 160,
+     "height": 72
+    },
+    "block": 0
+   },
+   {
+    "text": "(1P) PIN: WLMTO-T22B6ABC2-A6",
+    "box": {
+     "x": 168,
+     "y": 454,
+     "width": 419,
+     "height": 32
+    },
+    "block": 1
+   },
+   {
+    "text": "(S)SN: 26172525700892",
+    "box": {
+     "x": 173,
+     "y": 546,
+     "width": 273,
+     "height": 29
+    },
+    "block": 2
+   },
+   {
+    "text": "WLAN: 88:BC:AC:9B:2A:6C",
+    "box": {
+     "x": 177,
+     "y": 635,
+     "width": 306,
+     "height": 31
+    },
+    "block": 3
+   },
+   {
+    "text": "BT: 88:BC:AC:9B:2A:6B",
+    "box": {
+     "x": 184,
+     "y": 724,
+     "width": 262,
+     "height": 28
+    },
+    "block": 4
+   },
+   {
+    "text": "ZEBRA",
+    "box": {
+     "x": 260,
+     "y": 917,
+     "width": 142,
+     "height": 67
+    },
+    "block": 5
+   },
+   {
+    "text": "(1P) PIN: WLMTO -T22B6ABC2-A6",
+    "box": {
+     "x": 169,
+     "y": 991,
+     "width": 370,
+     "height": 49
+    },
+    "block": 6
+   },
+   {
+    "text": "(S)SN: 26173525701443",
+    "box": {
+     "x": 175,
+     "y": 1065,
+     "width": 238,
+     "height": 41
+    },
+    "block": 7
+   },
+   {
+    "text": "WLAN: 88:BC:AC:98:3A:8A",
+    "box": {
+     "x": 179,
+     "y": 1137,
+     "width": 268,
+     "height": 42
+    },
+    "block": 8
+   },
+   {
+    "text": "TC22",
+    "box": {
+     "x": 740,
+     "y": 370,
+     "width": 95,
+     "height": 40
+    },
+    "block": 9
+   },
+   {
+    "text": "WLMTO",
+    "box": {
+     "x": 709,
+     "y": 424,
+     "width": 143,
+     "height": 40
+    },
+    "block": 9
+   },
+   {
+    "text": "MADE IN VIETNAM",
+    "box": {
+     "x": 614,
+     "y": 555,
+     "width": 225,
+     "height": 31
+    },
+    "block": 10
+   },
+   {
+    "text": "(2P) REV: A",
+    "box": {
+     "x": 616,
+     "y": 646,
+     "width": 135,
+     "height": 29
+    },
+    "block": 11
+   },
+   {
+    "text": "(D) MFD: 21JUN26",
+    "box": {
+     "x": 617,
+     "y": 737,
+     "width": 213,
+     "height": 26
+    },
+    "block": 12
+   },
+   {
+    "text": "TC22",
+    "box": {
+     "x": 673,
+     "y": 949,
+     "width": 88,
+     "height": 39
+    },
+    "block": 13
+   },
+   {
+    "text": "WLMTO",
+    "box": {
+     "x": 647,
+     "y": 994,
+     "width": 129,
+     "height": 37
+    },
+    "block": 13
+   },
+   {
+    "text": "MADE IN VIETNAM",
+    "box": {
+     "x": 562,
+     "y": 1098,
+     "width": 201,
+     "height": 31
+    },
+    "block": 14
+   },
+   {
+    "text": "(2P) REV: A",
+    "box": {
+     "x": 564,
+     "y": 1171,
+     "width": 119,
+     "height": 28
+    },
+    "block": 15
+   },
+   {
+    "text": "Pats.: ip.zebra.com",
+    "box": {
+     "x": 955,
+     "y": 575,
+     "width": 184,
+     "height": 27
+    },
+    "block": 16
+   },
+   {
+    "text": "Pats.: ip.zebra.com",
+    "box": {
+     "x": 868,
+     "y": 1126,
+     "width": 164,
+     "height": 29
+    },
+    "block": 17
+   },
+   {
+    "text": "UK",
+    "box": {
+     "x": 865,
+     "y": 1157,
+     "width": 66,
+     "height": 38
+    },
+    "block": 18
+   },
+   {
+    "text": "|AT BEBGCHCY CZ DE",
+    "box": {
+     "x": 1071,
+     "y": 708,
+     "width": 262,
+     "height": 28
+    },
+    "block": 19
+   },
+   {
+    "text": "DK EE ELES FFR HR",
+    "box": {
+     "x": 1085,
+     "y": 730,
+     "width": 249,
+     "height": 27
+    },
+    "block": 19
+   },
+   {
+    "text": "HU IE IS IT LILTLU",
+    "box": {
+     "x": 1069,
+     "y": 754,
+     "width": 257,
+     "height": 24
+    },
+    "block": 19
+   },
+   {
+    "text": "LVMTNLNO PL PTRO",
+    "box": {
+     "x": 1080,
+     "y": 774,
+     "width": 246,
+     "height": 26
+    },
+    "block": 19
+   },
+   {
+    "text": "SE SISK TRUK(NI)|",
+    "box": {
+     "x": 1083,
+     "y": 795,
+     "width": 207,
+     "height": 26
+    },
+    "block": 19
+   }
+  ]
+ },
+ {
+  "file": "09.001.36.jpeg",
+  "width": 1200,
+  "height": 1600,
+  "barcodes": [
+   {
+    "value": "1PCR2278-PC10004WW",
+    "format": "code128",
+    "box": {
+     "x": 123,
+     "y": 1049,
+     "width": 731,
+     "height": 34
+    }
+   },
+   {
+    "value": "S25134523705759",
+    "format": "code128",
+    "box": {
+     "x": 118,
+     "y": 1139,
+     "width": 635,
+     "height": 47
+    }
+   }
+  ],
+  "lines": [
+   {
+    "text": "(1 P)PART NUMBER: DS2278-SROO007ZZWW",
+    "box": {
+     "x": 102,
+     "y": 397,
+     "width": 669,
+     "height": 50
+    },
+    "block": 0
+   },
+   {
+    "text": "(S)SERIAL NUMBER: 251",
+    "box": {
+     "x": 99,
+     "y": 543,
+     "width": 396,
+     "height": 42
+    },
+    "block": 1
+   },
+   {
+    "text": "(1P)PART NUMBER:",
+    "box": {
+     "x": 98,
+     "y": 690,
+     "width": 265,
+     "height": 33
+    },
+    "block": 2
+   },
+   {
+    "text": "DS2278: AREA IMAGER, STANDARD RANGE, CORDLESS, TWILIGHT BLACK",
+    "box": {
+     "x": 106,
+     "y": 444,
+     "width": 1080,
+     "height": 60
+    },
+    "block": 3
+   },
+   {
+    "text": "(1P)PART NUMBER:",
+    "box": {
+     "x": 87,
+     "y": 955,
+     "width": 269,
+     "height": 34
+    },
+    "block": 4
+   },
+   {
+    "text": "25113523703776",
+    "box": {
+     "x": 455,
+     "y": 550,
+     "width": 251,
+     "height": 35
+    },
+    "block": 5
+   },
+   {
+    "text": "CBA– U21- S07ZBR",
+    "box": {
+     "x": 407,
+     "y": 696,
+     "width": 299,
+     "height": 35
+    },
+    "block": 6
+   },
+   {
+    "text": "CR2278- PC10004WW",
+    "box": {
+     "x": 402,
+     "y": 953,
+     "width": 343,
+     "height": 28
+    },
+    "block": 7
+   },
+   {
+    "text": "(4L)0rigin: N",
+    "box": {
+     "x": 923,
+     "y": 145,
+     "width": 188,
+     "height": 40
+    },
+    "block": 8
+   },
+   {
+    "text": "(S)SERIAL NUMBER:",
+    "box": {
+     "x": 97,
+     "y": 1100,
+     "width": 313,
+     "height": 36
+    },
+    "block": 9
+   },
+   {
+    "text": "aty: 1",
+    "box": {
+     "x": 1100,
+     "y": 280,
+     "width": 76,
+     "height": 33
+    },
+    "block": 10
+   },
+   {
+    "text": "CABLE - SHIELDED USB: SERIES A CONNECTOR, 7FT. (2.1 M), STRAIGHT",
+    "box": {
+     "x": 102,
+     "y": 739,
+     "width": 1091,
+     "height": 46
+    },
+    "block": 11
+   },
+   {
+    "text": "DS2278: PRESENTATION CRADLE, BLUETOOTH, MIDNIGHT BLACK",
+    "box": {
+     "x": 94,
+     "y": 1002,
+     "width": 997,
+     "height": 34
+    },
+    "block": 12
+   },
+   {
+    "text": "25134523705759",
+    "box": {
+     "x": 461,
+     "y": 1098,
+     "width": 257,
+     "height": 29
+    },
+    "block": 13
+   },
+   {
+    "text": "1",
+    "box": {
+     "x": 1091,
+     "y": 553,
+     "width": 10,
+     "height": 25
+    },
+    "block": 14
+   },
+   {
+    "text": "VN",
+    "box": {
+     "x": 1102,
+     "y": 427,
+     "width": 29,
+     "height": 23
+    },
+    "block": 15
+   },
+   {
+    "text": "1",
+    "box": {
+     "x": 1099,
+     "y": 831,
+     "width": 10,
+     "height": 25
+    },
+    "block": 16
+   },
+   {
+    "text": "CN",
+    "box": {
+     "x": 1120,
+     "y": 708,
+     "width": 28,
+     "height": 23
+    },
+    "block": 17
+   },
+   {
+    "text": "1",
+    "box": {
+     "x": 1106,
+     "y": 1072,
+     "width": 13,
+     "height": 26
+    },
+    "block": 18
+   },
+   {
+    "text": "VN",
+    "box": {
+     "x": 1120,
+     "y": 957,
+     "width": 29,
+     "height": 24
+    },
+    "block": 19
+   }
+  ]
+ },
+ {
+  "file": "09.001.40.jpeg",
+  "width": 1600,
+  "height": 1200,
+  "barcodes": [
+   {
+    "value": "88:BC:AC:27:42:2C",
+    "format": "code128",
+    "box": {
+     "x": 329,
+     "y": 529,
+     "width": 486,
+     "height": 86
+    }
+   },
+   {
+    "value": "1PET40AB-001C1B0-A6",
+    "format": "code128",
+    "box": {
+     "x": 354,
+     "y": 328,
+     "width": 331,
+     "height": 53
+    }
+   },
+   {
+    "value": "2PB",
+    "format": "code128",
+    "box": {
+     "x": 648,
+     "y": 812,
+     "width": 150,
+     "height": 65
+    }
+   },
+   {
+    "value": "CN",
+    "format": "code128",
+    "box": {
+     "x": 336,
+     "y": 708,
+     "width": 175,
+     "height": 67
+    }
+   },
+   {
+    "value": "D13DEC24",
+    "format": "code128",
+    "box": {
+     "x": 345,
+     "y": 821,
+     "width": 251,
+     "height": 74
+    }
+   }
+  ],
+  "lines": [
+   {
+    "text": "ZEBRA",
+    "box": {
+     "x": 438,
+     "y": 197,
+     "width": 135,
+     "height": 62
+    },
+    "block": 0
+   },
+   {
+    "text": "(S)SN:",
+    "box": {
+     "x": 343,
+     "y": 395,
+     "width": 78,
+     "height": 27
+    },
+    "block": 1
+   },
+   {
+    "text": "Patents: ip.zebra.com",
+    "box": {
+     "x": 349,
+     "y": 269,
+     "width": 262,
+     "height": 23
+    },
+    "block": 2
+   },
+   {
+    "text": "(1P) P/N: ET40AB-001 C1 B0-A6",
+    "box": {
+     "x": 351,
+     "y": 299,
+     "width": 384,
+     "height": 29
+    },
+    "block": 2
+   },
+   {
+    "text": "WLAN: 88:BC:AC:27:42:2C",
+    "box": {
+     "x": 339,
+     "y": 493,
+     "width": 340,
+     "height": 22
+    },
+    "block": 3
+   },
+   {
+    "text": "BT: 88:BC:AC:27:42:2D",
+    "box": {
+     "x": 336,
+     "y": 592,
+     "width": 297,
+     "height": 22
+    },
+    "block": 4
+   },
+   {
+    "text": "ET40AB",
+    "box": {
+     "x": 658,
+     "y": 218,
+     "width": 96,
+     "height": 21
+    },
+    "block": 5
+   },
+   {
+    "text": "MADE IN CHINA",
+    "box": {
+     "x": 331,
+     "y": 689,
+     "width": 209,
+     "height": 25
+    },
+    "block": 6
+   },
+   {
+    "text": "(D) MFD: 13DEC24",
+    "box": {
+     "x": 328,
+     "y": 791,
+     "width": 226,
+     "height": 28
+    },
+    "block": 7
+   },
+   {
+    "text": "(2P) REV: B",
+    "box": {
+     "x": 645,
+     "y": 789,
+     "width": 143,
+     "height": 29
+    },
+    "block": 8
+   },
+   {
+    "text": "AT BE BG CHCYCZDE",
+    "box": {
+     "x": 1001,
+     "y": 475,
+     "width": 214,
+     "height": 20
+    },
+    "block": 9
+   },
+   {
+    "text": "DK EEEL ES FFR HR",
+    "box": {
+     "x": 999,
+     "y": 495,
+     "width": 220,
+     "height": 19
+    },
+    "block": 9
+   },
+   {
+    "text": "HU IEIsITLLTLU",
+    "box": {
+     "x": 999,
+     "y": 516,
+     "width": 221,
+     "height": 20
+    },
+    "block": 9
+   },
+   {
+    "text": "LV MT NL NO PL PT RO",
+    "box": {
+     "x": 999,
+     "y": 536,
+     "width": 221,
+     "height": 20
+    },
+    "block": 9
+   },
+   {
+    "text": "SE SI SK TRUK(NI)",
+    "box": {
+     "x": 1002,
+     "y": 555,
+     "width": 181,
+     "height": 22
+    },
+    "block": 9
+   },
+   {
+    "text": "R-C-ZTC-ET40AB",
+    "box": {
+     "x": 868,
+     "y": 860,
+     "width": 164,
+     "height": 23
+    },
+    "block": 10
+   },
+   {
+    "text": "A",
+    "box": {
+     "x": 1036,
+     "y": 795,
+     "width": 39,
+     "height": 54
+    },
+    "block": 11
+   }
+  ]
+ },
+ {
+  "file": "09.010.139.jpeg",
+  "width": 1600,
+  "height": 1200,
+  "barcodes": [],
+  "lines": [
+   {
+    "text": "BT MAC:C81CFEA6E99",
+    "box": {
+     "x": 267,
+     "y": 0,
+     "width": 42,
+     "height": 376
+    },
+    "block": 0
+   },
+   {
+    "text": "( id)",
+    "box": {
+     "x": 277,
+     "y": 500,
+     "width": 146,
+     "height": 40
+    },
+    "block": 1
+   },
+   {
+    "text": "MADE IN VIETNAM",
+    "box": {
+     "x": 280,
+     "y": 636,
+     "width": 284,
+     "height": 29
+    },
+    "block": 2
+   },
+   {
+    "text": "P/N: MC330X-GE4EG4RW",
+    "box": {
+     "x": 284,
+     "y": 669,
+     "width": 407,
+     "height": 38
+    },
+    "block": 3
+   },
+   {
+    "text": "MFD:27APR24 VN",
+    "box": {
+     "x": 284,
+     "y": 705,
+     "width": 354,
+     "height": 33
+    },
+    "block": 4
+   },
+   {
+    "text": "(S)S/N: 241185251 00190",
+    "box": {
+     "x": 281,
+     "y": 733,
+     "width": 377,
+     "height": 41
+    },
+    "block": 4
+   },
+   {
+    "text": "WLAN MAC: C81CFEAE",
+    "box": {
+     "x": 1027,
+     "y": -15,
+     "width": 48,
+     "height": 367
+    },
+    "block": 5
+   },
+   {
+    "text": "R39706",
+    "box": {
+     "x": 1030,
+     "y": 591,
+     "width": 102,
+     "height": 23
+    },
+    "block": 6
+   },
+   {
+    "text": "RoHS",
+    "box": {
+     "x": 1041,
+     "y": 621,
+     "width": 81,
+     "height": 24
+    },
+    "block": 7
+   }
+  ]
+ }
+]

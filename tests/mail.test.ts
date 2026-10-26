@@ -1,0 +1,213 @@
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import ExcelJS from 'exceljs';
+import { describe, expect, it, vi } from 'vitest';
+import { companyUser } from '../shared/account';
+import { GMAIL_SEND_SCOPE, transmitGmail } from '../shared/gmail';
+import { buildInventoryMessage, encodeBase64, encodeHeaderText, utf8Encode } from '../shared/mime';
+import { RECIPIENT, type Inventory, type User } from '../shared/model';
+import { createWorkbookService } from '../src/workbook';
+import { createGmailDelivery } from '../src/delivery';
+
+const user: User = { sub: '1234', email: 'ana.souza@ytechsolucoes.com', name: 'Ana Souza Conceição' };
+
+function inventory(items: Inventory['items'] = []): Inventory {
+  return {
+    id: randomUUID(), title: 'Depósito São Paulo · outubro', location: 'MZ01-E01-N01',
+    startedAt: '2026-10-13T12:00:00.000Z', completedAt: '2026-10-13T13:00:00.000Z', catalogVersion: 'v1',
+    items: items.length ? items : [{
+      id: randomUUID(), pn: 'EC300K-1SA2AA6', ns: '000123', location: 'MZ01-E01-N01', quantity: 1,
+      capturedAt: '2026-10-13T12:30:00.000Z', source: 'barcode', rawPn: 'EC300K-1SA2AA6', rawNs: '000123', confirmed: true,
+    }],
+  };
+}
+
+function decodeHeader(value: string): string {
+  // RFC 2047: whitespace between adjacent encoded words is not part of the text.
+  return value.replace(/\?=\s+=\?/g, '?==?').replace(/=\?UTF-8\?B\?([A-Za-z0-9+/=]+)\?=/g, (_match, data: string) => Buffer.from(data, 'base64').toString('utf8'));
+}
+
+function parse(raw: string) {
+  const [head, ...rest] = raw.split('\r\n\r\n');
+  const headers = new Map<string, string>();
+  for (const line of head!.replace(/\r\n /g, ' ').split('\r\n')) {
+    const index = line.indexOf(':');
+    headers.set(line.slice(0, index), line.slice(index + 2));
+  }
+  const boundary = /boundary="([^"]+)"/.exec(headers.get('Content-Type') ?? '')![1]!;
+  const parts = rest.join('\r\n\r\n').split(`--${boundary}`).slice(1, -1).map(part => {
+    const [partHead, body] = part.replace(/^\r\n/, '').split('\r\n\r\n');
+    return { head: partHead!, content: Buffer.from(body!.replace(/\r\n/g, ''), 'base64') };
+  });
+  return { headers, parts, boundary };
+}
+
+describe('codificação do e-mail', () => {
+  it('o envio automático inclui o PDF completo antes das planilhas, preservando todas as unidades', async () => {
+    const service = await createWorkbookService(new Uint8Array(await readFile('assets/catalog/sb1-produtos.xlsx')), 'v1');
+    const sample = inventory();
+    sample.items.push({ ...sample.items[0]!, id: randomUUID(), pn: 'FORA-DO-CATALOGO', ns: '000456', patrimony: 'PAT-001' });
+    const pdfBytes = utf8Encode('%PDF-1.7\nfixture-do-renderizador-nativo');
+    const reportPdf = vi.fn(async () => ({ filename: 'Inventario.pdf', mimeType: 'application/pdf', content: pdfBytes }));
+    const delivery = createGmailDelivery({ workbook: async () => service, reportPdf, user: () => user, accessToken: async () => 'token' });
+    const { raw } = await delivery.prepare(user.sub, sample);
+    expect(reportPdf).toHaveBeenCalledExactlyOnceWith(sample);
+    const { parts, headers } = parse(raw);
+    expect(headers.get('To')).toBe(RECIPIENT);
+    expect(parts).toHaveLength(4);
+    expect(parts[0]!.content.toString('utf8')).toContain('- Inventario.pdf: relatório completo');
+    expect(parts[0]!.content.toString('utf8')).toContain('Itens: 2');
+    expect(parts[1]!.head).toContain('Content-Type: application/pdf');
+    expect(Uint8Array.from(parts[1]!.content)).toEqual(pdfBytes);
+    expect(parts[2]!.head).toContain('filename="SB1_Produtos.xlsx"');
+    expect(parts[3]!.head).toContain('filename="Inventario_Ytech.xlsx"');
+    const report = new ExcelJS.Workbook();
+    await report.xlsx.load(Uint8Array.from(parts[3]!.content).buffer);
+    const rows = report.getWorksheet('Inventário')!;
+    expect(rows.rowCount).toBe(3);
+    expect(rows.getCell('B2').value).toBe('000123');
+    expect(rows.getCell('B3').value).toBe('000456');
+    expect(rows.getCell('M3').value).toBe('PAT-001');
+  });
+
+  it('interrompe a preparação se o PDF falhar, sem produzir e-mail incompleto', async () => {
+    const service = await createWorkbookService(new Uint8Array(await readFile('assets/catalog/sb1-produtos.xlsx')), 'v1');
+    const delivery = createGmailDelivery({
+      workbook: async () => service, user: () => user, accessToken: async () => 'token',
+      reportPdf: async () => { throw new Error('Falha ao gerar PDF'); },
+    });
+    await expect(delivery.prepare(user.sub, inventory())).rejects.toThrow('Falha ao gerar PDF');
+  });
+
+  it.each([
+    { mimeType: 'application/pdf', content: new Uint8Array() },
+    { mimeType: 'text/plain', content: utf8Encode('Inválido') },
+  ])('não prepara envio com PDF vazio ou tipo incorreto: $mimeType', async pdf => {
+    const service = await createWorkbookService(new Uint8Array(await readFile('assets/catalog/sb1-produtos.xlsx')), 'v1');
+    const delivery = createGmailDelivery({
+      workbook: async () => service, user: () => user, accessToken: async () => 'token',
+      reportPdf: async () => ({ filename: 'Inventario.pdf', ...pdf }),
+    });
+    await expect(delivery.prepare(user.sub, inventory())).rejects.toThrow('relatório PDF completo');
+  });
+
+  it('relatório parcial identifica a coleta aberta sem alterar o contrato do SB1', async () => {
+    const service = await createWorkbookService(new Uint8Array(await readFile('assets/catalog/sb1-produtos.xlsx')), 'v1');
+    const data = inventory();
+    const result = await service.export(data, user, { partial: true });
+    const report = new ExcelJS.Workbook();
+    await report.xlsx.load(result.attachments[1]!.content.slice().buffer);
+    const metadata = report.getWorksheet('Identificação')!;
+    expect(metadata.getCell('B3').value).toBe(data.id);
+    const status = metadata.getRows(1, metadata.rowCount)!.find(row => row.getCell(1).value === 'Situação');
+    expect(status?.getCell(2).value).toContain('PARCIAL');
+    expect(result.warnings.some(message => message.includes('CÓPIA PARCIAL'))).toBe(true);
+    expect(result.attachments.map(file => file.filename)).toEqual(['SB1_Produtos.xlsx', 'Inventario_Ytech.xlsx']);
+  });
+  it('codifica UTF-8 e Base64 exatamente como o Node', () => {
+    for (const text of ['', 'a', 'Inventário', '漢字', '😀 ok', '\ud800x']) {
+      expect(Buffer.from(utf8Encode(text))).toEqual(Buffer.from(text, 'utf8'));
+    }
+    for (let length = 0; length < 70; length++) {
+      const bytes = Uint8Array.from({ length }, (_, index) => (index * 37 + length) % 256);
+      expect(encodeBase64(bytes)).toBe(Buffer.from(bytes).toString('base64'));
+    }
+  });
+
+  it('divide cabeçalhos acentuados em palavras RFC 2047 de até 75 caracteres', () => {
+    const text = `Inventário Ytech: ${'Depósito ção 😀 '.repeat(8)}`;
+    const encoded = encodeHeaderText(text);
+    expect(encoded.split('\r\n ').every(word => word.length <= 75)).toBe(true);
+    expect(decodeHeader(encoded)).toBe(text);
+    expect(encodeHeaderText('ASCII simples')).toBe('ASCII simples');
+    expect(() => encodeHeaderText('A\r\nBcc: invasor@example.com')).toThrow('quebra de linha');
+  });
+
+  it('monta remetente, destinatário fixo, corpo e anexos sem perder bytes', () => {
+    const content = Uint8Array.from({ length: 3000 }, (_, index) => index % 256);
+    const sample = inventory();
+    const raw = buildInventoryMessage({
+      inventory: sample, user: { ...user, name: 'Ana\r\nBcc: x@example.com' }, warnings: ['aviso'],
+      attachments: [{ filename: 'SB1_Produtos.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', content }],
+    });
+    expect(raw.split('\r\n').every(line => line.length <= 998)).toBe(true);
+    expect(raw).not.toMatch(/(^|[^\r])\n/);
+    const { headers, parts } = parse(raw);
+    expect(decodeHeader(headers.get('From')!)).toBe(`Ana Bcc: x@example.com <${user.email}>`);
+    expect(headers.has('Bcc')).toBe(false);
+    expect(headers.get('To')).toBe(RECIPIENT);
+    expect(decodeHeader(headers.get('Subject')!)).toBe(`Inventário Ytech: ${sample.title}`);
+    expect(headers.get('Message-ID')).toBe(`<inventory-${sample.id}@ytechsolucoes.com>`);
+    const body = parts[0]!.content.toString('utf8');
+    expect(body).toContain(`ID: ${sample.id}`);
+    expect(body).toContain('Responsável: Ana');
+    expect(body).toContain('Pendências para revisão: 1');
+    expect(parts[1]!.head).toContain('filename="SB1_Produtos.xlsx"');
+    expect(Uint8Array.from(parts[1]!.content)).toEqual(content);
+    expect(() => buildInventoryMessage({ inventory: sample, user, warnings: [], attachments: [{ filename: '../x.xlsx', mimeType: 'a/b', content }] }))
+      .toThrow('Nome de anexo inválido');
+  });
+
+  it('leva as duas planilhas reais no e-mail e elas abrem no Excel', async () => {
+    const template = new Uint8Array(await readFile('assets/catalog/sb1-produtos.xlsx'));
+    const service = await createWorkbookService(template, 'v1');
+    const sample = inventory();
+    const { attachments, warnings } = await service.export(sample, user);
+    expect(attachments.every(attachment => attachment.content instanceof Uint8Array && !Buffer.isBuffer(attachment.content))).toBe(true);
+    const { parts } = parse(buildInventoryMessage({ inventory: sample, user, warnings, attachments }));
+    expect(parts).toHaveLength(3);
+    const sb1 = new ExcelJS.Workbook();
+    await sb1.xlsx.load(Uint8Array.from(parts[1]!.content).buffer);
+    expect(sb1.getWorksheet('Produtos')!.getCell('B4').value).toBe('EC300K-1SA2AA6');
+    const report = new ExcelJS.Workbook();
+    await report.xlsx.load(Uint8Array.from(parts[2]!.content).buffer);
+    expect(report.getWorksheet('Inventário')!.getCell('B2').value).toBe('000123');
+    expect(report.getWorksheet('Inventário')!.getCell('G2').value).toBe(user.email);
+  });
+
+  it('o modelo embutido é idêntico à planilha original da pasta', async () => {
+    const { readdir } = await import('node:fs/promises');
+    const original = (await readdir('.')).filter(name => name.endsWith('.xlsx') && !name.startsWith('~$'));
+    expect(original).toHaveLength(1);
+    expect(await readFile('assets/catalog/sb1-produtos.xlsx')).toEqual(await readFile(original[0]!));
+  });
+});
+
+describe('envio pela Gmail API', () => {
+  function respond(status: number, body: unknown) {
+    return vi.fn(async () => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status }));
+  }
+
+  it('envia a mensagem bruta pelo endpoint de upload com o token do usuário', async () => {
+    const fetchImpl = respond(200, { id: 'abc123' });
+    await expect(transmitGmail('RAW', 'token-1', fetchImpl)).resolves.toEqual({ status: 'sent', messageId: 'abc123' });
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://gmail.googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=media');
+    expect(init.method).toBe('POST');
+    expect(init.headers).toEqual({ Authorization: 'Bearer token-1', 'Content-Type': 'message/rfc822' });
+    expect(init.body).toBe('RAW');
+    expect(GMAIL_SEND_SCOPE).toBe('https://www.googleapis.com/auth/gmail.send');
+  });
+
+  it('classifica respostas sem considerar enviado o que não foi confirmado', async () => {
+    expect((await transmitGmail('RAW', 't', respond(401, { error: { message: 'Invalid Credentials' } }))).status).toBe('unauthorized');
+    const forbidden = await transmitGmail('RAW', 't', respond(403, { error: { message: 'Gmail API has not been used' } }));
+    expect(forbidden).toMatchObject({ status: 'failed' });
+    expect(forbidden.status === 'failed' && forbidden.message).toContain('Gmail API');
+    expect((await transmitGmail('RAW', 't', respond(500, 'erro'))).status).toBe('uncertain');
+    expect((await transmitGmail('RAW', 't', respond(408, 'timeout'))).status).toBe('uncertain');
+    expect((await transmitGmail('RAW', 't', respond(429, 'limite'))).status).toBe('failed');
+    expect((await transmitGmail('RAW', 't', respond(200, {}))).status).toBe('uncertain');
+    expect((await transmitGmail('RAW', 't', respond(200, 'não é json'))).status).toBe('uncertain');
+    expect((await transmitGmail('RAW', 't', vi.fn(async () => { throw new TypeError('Network request failed'); }))).status).toBe('uncertain');
+  });
+});
+
+describe('conta Google da empresa', () => {
+  it('aceita somente o domínio exato e normaliza o e-mail', () => {
+    expect(companyUser({ id: '1', email: 'Ana@YtechSolucoes.com', name: null })).toEqual({ sub: '1', email: 'ana@ytechsolucoes.com', name: 'ana@ytechsolucoes.com' });
+    for (const email of ['ana@gmail.com', 'ana@ytechsolucoes.com.br', 'ana@sub.ytechsolucoes.com', 'ytechsolucoes.com', 'ana@evil-ytechsolucoes.com']) {
+      expect(() => companyUser({ id: '1', email, name: 'Ana' })).toThrow('@ytechsolucoes.com');
+    }
+  });
+});
