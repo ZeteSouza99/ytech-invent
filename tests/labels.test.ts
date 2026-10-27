@@ -457,6 +457,20 @@ describe('várias etiquetas na mesma foto', () => {
     expect(after(1, scan, catalog)).toMatchObject({ status: 'searching', ns: { value: BOTTOM }, pn: { value: 'ZT41143-T0A0000Z' } });
     expect(after(2, scan, catalog)).toMatchObject({ status: 'ready', ns: { value: BOTTOM }, pn: { value: 'ZT41143-T0A0000Z', confidence: 'media' } });
   });
+
+  it('o texto do modelo irmão não vira o código 1P da vizinha por letras parecidas (8 e B)', () => {
+    const counted = createCatalogIndex([], ['XT4100-B2C3D4']);
+    const scan: LabelScan = {
+      width: 1200, height: 1600,
+      lines: [
+        line('P/N: XT4100-B2C3D4', 560, 300), line(`(S) S/N: ${TOP}`, 600, 300),
+        line('P/N: XT4100-82C3D4', 740, 300), line(`(S) S/N: ${BOTTOM}`, 780, 300),
+      ],
+      barcodes: [code('1PXT4100-B2C3D4', 500, 300), code(TOP, 640, 300), code(BOTTOM, 820, 300)],
+    };
+    expect(after(1, scan, counted)).toMatchObject({ status: 'searching', ns: { value: BOTTOM }, pn: { value: 'XT4100-82C3D4' } });
+    expect(after(2, scan, counted)).toMatchObject({ status: 'ready', ns: { value: BOTTOM }, pn: { value: 'XT4100-82C3D4', confidence: 'media' } });
+  });
 });
 
 describe('câmera passando da unidade salva para a próxima', () => {

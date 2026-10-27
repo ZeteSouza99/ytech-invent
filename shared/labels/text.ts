@@ -141,6 +141,12 @@ function misreadOf(text: string, decoded: DecodedValue[], box: Box | undefined, 
 // Readings whose text was replaced by the barcode printed beside it, which may be on another label in view.
 const correctedByCode = new WeakSet<Reading>();
 
+// The same characters, apart from separators.
+function sameCharacters(left: string, right: string): boolean {
+  const plain = (value: string) => normalizeCode(value).replace(/[ _.-]/g, '');
+  return plain(left) === plain(right);
+}
+
 function pnFromTokens(
   tokens: string[], raw: string, catalog: CatalogIndex, decoded: DecodedValue[], box?: Box,
 ): Reading | null {
@@ -154,8 +160,15 @@ function pnFromTokens(
   for (let size = Math.min(tokens.length, 4); size >= 1; size -= 1) {
     const text = tokens.slice(0, size).join(' ');
     const key = skeleton(text);
-    const barcode = decoded.find(item => skeleton(item.value) === key);
-    if (barcode && key.length >= 5) return fromCode(barcode);
+    // The barcode of this very part number anywhere, or one beside the text whose look-alike characters the OCR
+    // confused (8 and B): a barcode further away may be a sibling model on another label.
+    const lookalikes = key.length >= 5 ? decoded.filter(item => skeleton(item.value) === key) : [];
+    const barcode = lookalikes.find(item => sameCharacters(item.value, text)) ?? lookalikes.find(item => adjacent(box, item.read.box));
+    if (barcode) {
+      const reading = fromCode(barcode);
+      if (reading && !sameCharacters(barcode.value, text)) correctedByCode.add(reading);
+      return reading;
+    }
     const match = catalog.match(text);
     if (match?.kind === 'approximate') {
       approximate ??= makeReading('pn', match.value, raw, 'ocr', ['texto', 'rotulo', 'catalogo-aproximado'], catalog, box);
