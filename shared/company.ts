@@ -38,3 +38,7 @@ export const organizationSchema = z.object({
   cnpj: cnpjSchema,
 }).strict().refine(value => value.kind !== 'internal' || value.name === YTECH_NAME, 'O inventário interno pertence à Ytech Soluções.');
 export type Organization = z.infer<typeof organizationSchema>;
+
+export function organizationKindLabel(organization?: Pick<Organization, 'kind'>): string {
+  return organization ? (organization.kind === 'internal' ? 'Interno' : 'Externo') : 'Não informado';
+}

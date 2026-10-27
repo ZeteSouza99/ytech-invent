@@ -14,6 +14,8 @@ afterEach(() => vi.restoreAllMocks());
 describe('Google ID token e política corporativa', () => {
   it('usa verifyIdToken com audience do servidor, nunca apenas decodificação', async () => {
     const verify = vi.spyOn(OAuth2Client.prototype, 'verifyIdToken')
+      // verifyIdToken is overloaded; the code under test uses the promise-returning form, not the callback one.
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
       .mockImplementation(async () => new LoginTicket('', claims));
     const verifier = createGoogleTokenVerifier(clientId);
     expect(await authenticate('Bearer signed-token', verifier, clientId)).toEqual({

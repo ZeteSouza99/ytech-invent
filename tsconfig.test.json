@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Tests run app code on Node with simulated native modules.
+    "types": ["node", "react"]
+  },
+  "include": ["tests/**/*.ts", "src/assets.d.ts"]
+}

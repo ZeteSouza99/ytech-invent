@@ -1,9 +1,14 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
+import type { InventoryState } from './repository';
 
 export const colors = {
   paper: '#F3F7FC', white: '#FFFFFF', ink: '#16324F', muted: '#52677F',
   line: '#D4DFED', blue: '#2457DB', green: '#0C735F', amber: '#945400', red: '#B42335',
+};
+
+export const stateLabels: Record<InventoryState, string> = {
+  draft: 'Em coleta', queued: 'Envio pendente', sending: 'Enviando', sent: 'Enviado pelo Gmail', failed: 'Falha no envio', uncertain: 'Envio a conferir',
 };
 
 export function Button({ title, onPress, secondary = false, disabled = false, danger = false }: {

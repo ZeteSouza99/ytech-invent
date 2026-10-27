@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { organizationSchema, type Organization } from '../shared/company';
-import { inventorySchema, inventoryTextSchema, itemSchema, MAX_ITEMS, MAX_PAYLOAD_BYTES, receiptSchema, utf8ByteLength, type Inventory, type InventoryItem, type Receipt } from '../shared/model';
+import {
+  errorMessage, inventorySchema, inventoryTextSchema, itemSchema, MAX_BACKUP_INVENTORIES, MAX_ITEMS, MAX_PAYLOAD_BYTES,
+  receiptSchema, utf8ByteLength, type Inventory, type InventoryItem, type Receipt,
+} from '../shared/model';
 
 type SqlValue = string | number | null;
 export interface LocalDatabase {
@@ -10,37 +13,60 @@ export interface LocalDatabase {
   getAllAsync<T>(sql: string, ...values: SqlValue[]): Promise<T[]>;
 }
 
-// Keep older stored labels readable for explicit repair; all writes and submissions use the current contract.
-const storedLabelSchema = z.string().min(1).max(120);
-const metadataSchema = z.object({ title: inventoryTextSchema, location: inventoryTextSchema, organization: organizationSchema.optional() }).strict();
-const draftSchema = z.object({
-  id: z.uuid(), owner: z.string().min(1), title: storedLabelSchema,
-  location: storedLabelSchema, startedAt: z.iso.datetime(),
-  completedAt: z.iso.datetime().nullable(), catalogVersion: z.string().min(1),
-  state: z.enum(['draft', 'queued', 'sending', 'sent', 'failed', 'uncertain']),
-  lastError: z.string(), receipt: z.string().nullable(),
-  organization: z.preprocess(value => typeof value === 'string' ? JSON.parse(value) : value === null ? undefined : value, organizationSchema.optional()),
-});
-export type Draft = z.infer<typeof draftSchema>;
+export const INVENTORY_STATES = ['draft', 'queued', 'sending', 'sent', 'failed', 'uncertain'] as const;
+export type InventoryState = typeof INVENTORY_STATES[number];
+
+export type Draft = {
+  id: string;
+  owner: string;
+  title: string;
+  location: string;
+  startedAt: string;
+  completedAt: string | null;
+  catalogVersion: string;
+  state: InventoryState;
+  lastError: string;
+  receipt: string | null;
+  organization?: Organization;
+  // Present when stored data can no longer be read; the inventory stays visible so it can be repaired or deleted.
+  problem?: string;
+};
 export type InventorySummary = Draft & { count: number };
 export type DeliveryOutcome = { status: 'sent' | 'failed' | 'uncertain'; message: string; warnings: string[] };
+export type UnitChanges = { location: string; patrimony?: string };
 
-export class InventoryRepository {
-  private tail: Promise<unknown> = Promise.resolve();
-  constructor(private readonly db: LocalDatabase) {}
+// Reading is more tolerant than writing: validation rules may tighten in later versions, and data saved
+// under older rules must stay visible for repair instead of making every inventory of the account unreadable.
+// Writes, conclusion, export and submission always use the current contract.
+const storedLabelSchema = z.string().min(1).max(120);
+const storedOrganizationSchema = z.object({
+  kind: z.enum(['internal', 'external']),
+  name: z.string().min(1).max(200),
+  cnpj: z.string().min(1).max(18),
+});
+const rowSchema = z.object({
+  id: z.string().min(1).max(64), owner: z.string().min(1), title: storedLabelSchema, location: storedLabelSchema,
+  startedAt: z.iso.datetime(), completedAt: z.iso.datetime().nullable(), catalogVersion: z.string().min(1),
+  state: z.enum(INVENTORY_STATES), lastError: z.string(), receipt: z.string().nullable(),
+  organization: z.string().nullable().optional(),
+});
+const storedItemSchema = z.object({
+  id: z.string().min(1).max(64), pn: z.string().min(1).max(120), ns: z.string().min(1).max(80),
+  location: z.string().min(1).max(120), quantity: z.literal(1), capturedAt: z.iso.datetime(),
+  source: z.enum(['barcode', 'manual', 'ocr']), rawPn: z.string().max(2048), rawNs: z.string().max(2048),
+  confirmed: z.literal(true), patrimony: z.string().min(1).max(80).optional(),
+});
+const metadataSchema = z.object({ title: inventoryTextSchema, location: inventoryTextSchema, organization: organizationSchema.optional() }).strict();
+const newDraftSchema = z.object({ id: z.uuid(), owner: z.string().min(1), startedAt: z.iso.datetime(), catalogVersion: z.string().min(1) });
 
-  private serialize<T>(action: () => Promise<T>): Promise<T> {
-    const result = this.tail.then(action);
-    // Keep the write queue usable after an error; the caller still receives the rejection.
-    this.tail = result.then(() => undefined, () => undefined);
-    return result;
-  }
+const ORGANIZATION_PROBLEM = 'A identificação da empresa salva neste inventário está ilegível. Edite a identificação antes de concluir ou exportar; as unidades estão preservadas.';
+const DAMAGED_PROBLEM = 'Os dados deste inventário não puderam ser lidos neste aparelho. Nada foi apagado; exporte as demais coletas e procure o suporte antes de excluí-lo.';
+const CLOCK_BEHIND = 'A data e a hora do aparelho estão antes do início desta coleta. Corrija o relógio do aparelho e salve de novo; esta unidade não foi gravada.';
 
-  async initialize(): Promise<void> {
-    await this.db.execAsync(`
-      PRAGMA journal_mode = WAL;
-      PRAGMA synchronous = FULL;
-      PRAGMA foreign_keys = ON;
+// Applied in order; PRAGMA user_version records how many already ran. Never edit a released step: append a new one.
+const MIGRATIONS: ((db: LocalDatabase) => Promise<void>)[] = [
+  async db => {
+    await db.execAsync(`
       CREATE TABLE IF NOT EXISTS inventories (
         id TEXT PRIMARY KEY, owner TEXT NOT NULL, title TEXT NOT NULL, location TEXT NOT NULL,
         startedAt TEXT NOT NULL, completedAt TEXT, catalogVersion TEXT NOT NULL,
@@ -53,18 +79,118 @@ export class InventoryRepository {
       );
       CREATE INDEX IF NOT EXISTS items_inventory ON items(inventoryId);
     `);
-    const columns = await this.db.getAllAsync<{ name: string }>('PRAGMA table_info(inventories)');
+  },
+  // Version 1.1.0 added the column without recording a schema version; databases created by it already have it.
+  async db => {
+    const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(inventories)');
     if (!columns.some(column => column.name === 'organization')) {
-      await this.db.execAsync('ALTER TABLE inventories ADD COLUMN organization TEXT');
+      await db.execAsync('ALTER TABLE inventories ADD COLUMN organization TEXT');
+    }
+  },
+];
+
+function parseOrganization(text: string): Organization | null {
+  try {
+    const parsed = storedOrganizationSchema.safeParse(JSON.parse(text));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+function toDraft(row: unknown): Draft {
+  const { organization: stored, ...fields } = rowSchema.parse(row);
+  const draft: Draft = fields;
+  if (stored) {
+    const organization = parseOrganization(stored);
+    if (organization) draft.organization = organization;
+    else draft.problem = ORGANIZATION_PROBLEM;
+  }
+  return draft;
+}
+
+// Keeps a row that no longer matches the schema visible, flagged, and out of the submission path.
+function damagedSummary(row: Record<string, unknown>): InventorySummary {
+  const text = (value: unknown, fallback: string) => typeof value === 'string' && value.trim() ? value.slice(0, 120) : fallback;
+  const startedAt = typeof row.startedAt === 'string' && !Number.isNaN(Date.parse(row.startedAt)) ? row.startedAt : new Date(0).toISOString();
+  return {
+    id: String(row.id), owner: String(row.owner), title: text(row.title, 'Inventário ilegível'), location: text(row.location, '—'),
+    startedAt, completedAt: null, catalogVersion: text(row.catalogVersion, '—'),
+    state: INVENTORY_STATES.find(state => state === row.state) ?? 'failed',
+    lastError: '', receipt: null, problem: DAMAGED_PROBLEM, count: Number(row.count) || 0,
+  };
+}
+
+function readStoredItem(row: { id: string; json: string }): InventoryItem {
+  try {
+    return storedItemSchema.parse(JSON.parse(row.json));
+  } catch {
+    throw new Error(`Uma leitura salva neste inventário está ilegível (registro ${row.id}). Nada foi apagado; procure o suporte.`);
+  }
+}
+
+// The device clock may be corrected backwards after the readings. The conclusion never precedes a reading,
+// so a clock change cannot make an inventory impossible to conclude or export.
+function completionTime(startedAt: string, items: readonly { capturedAt: string }[]): string {
+  let latest = Math.max(Date.now(), Date.parse(startedAt));
+  for (const item of items) latest = Math.max(latest, Date.parse(item.capturedAt));
+  return new Date(latest).toISOString();
+}
+
+function basePayload(draft: Draft, completedAt: string) {
+  return { id: draft.id, title: draft.title, location: draft.location, startedAt: draft.startedAt, completedAt, catalogVersion: draft.catalogVersion, ...(draft.organization ? { organization: draft.organization } : {}) };
+}
+
+export class InventoryRepository {
+  private tail: Promise<unknown> = Promise.resolve();
+  constructor(private readonly db: LocalDatabase) {}
+
+  // Every write goes through this queue so validations and the write that depends on them are never interleaved.
+  private serialize<T>(action: () => Promise<T>): Promise<T> {
+    const result = this.tail.then(action);
+    // Keep the write queue usable after an error; the caller still receives the rejection.
+    this.tail = result.then(() => undefined, () => undefined);
+    return result;
+  }
+
+  // Runs inside the write queue; never call another serialized method from `action`.
+  private async transaction<T>(name: string, action: () => Promise<T>): Promise<T> {
+    await this.db.execAsync(`SAVEPOINT ${name}`);
+    try {
+      const result = await action();
+      await this.db.execAsync(`RELEASE ${name}`);
+      return result;
+    } catch (failure) {
+      await this.db.execAsync(`ROLLBACK TO ${name}; RELEASE ${name}`);
+      throw failure;
     }
   }
 
-  async create(input: Draft): Promise<void> {
-    const metadata = metadataSchema.parse({ title: input.title, location: input.location, organization: input.organization });
-    const draft = draftSchema.parse({ ...input, ...metadata });
-    if (draft.state !== 'draft' || draft.completedAt) throw new Error('Um inventário novo deve estar em coleta.');
-    await this.db.runAsync('INSERT INTO inventories(id,owner,title,location,startedAt,catalogVersion,organization) VALUES (?,?,?,?,?,?,?)',
-      draft.id, draft.owner, draft.title, draft.location, draft.startedAt, draft.catalogVersion, draft.organization ? JSON.stringify(draft.organization) : null);
+  initialize(): Promise<void> {
+    return this.serialize(async () => {
+      await this.db.execAsync('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+      const current = (await this.db.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))?.user_version ?? 0;
+      if (current > MIGRATIONS.length) {
+        throw new Error('Os dados foram gravados por uma versão mais nova do Ytech Invent. Instale a versão mais recente; nada foi alterado.');
+      }
+      for (let version = current; version < MIGRATIONS.length; version += 1) {
+        await this.transaction('migration', async () => {
+          await MIGRATIONS[version]!(this.db);
+          await this.db.execAsync(`PRAGMA user_version = ${version + 1}`);
+        });
+      }
+    });
+  }
+
+  create(input: Draft): Promise<void> {
+    return this.serialize(async () => {
+      const metadata = metadataSchema.parse({ title: input.title, location: input.location, organization: input.organization });
+      const draft = newDraftSchema.parse(input);
+      if (input.state !== 'draft' || input.completedAt) throw new Error('Um inventário novo deve estar em coleta.');
+      await this.db.runAsync('INSERT INTO inventories(id,owner,title,location,startedAt,catalogVersion,organization) VALUES (?,?,?,?,?,?,?)',
+        draft.id, draft.owner, metadata.title, metadata.location, draft.startedAt, draft.catalogVersion,
+        metadata.organization ? JSON.stringify(metadata.organization) : null);
+    });
   }
 
   updateMetadata(owner: string, id: string, input: { title: string; location: string; organization?: Organization }): Promise<void> {
@@ -73,60 +199,96 @@ export class InventoryRepository {
       const draft = await this.get(owner, id);
       if (draft.state !== 'draft') throw new Error('Inventário concluído não pode ser alterado.');
       const totals = await this.itemTotals(id);
-      const envelope = JSON.stringify({ ...this.basePayload({ ...draft, ...metadata, organization: metadata.organization ?? draft.organization }, new Date().toISOString()), items: [] });
+      const organization = metadata.organization ?? draft.organization;
+      const envelope = JSON.stringify({ ...basePayload({ ...draft, ...metadata, ...(organization ? { organization } : {}) }, new Date().toISOString()), items: [] });
       if (utf8ByteLength(envelope) + totals.bytes + Math.max(0, totals.count - 1) > MAX_PAYLOAD_BYTES) {
         throw new Error('A identificação aumentaria o inventário além de 8 MB. Use um nome mais curto.');
       }
-      const organization = metadata.organization ?? draft.organization;
-      await this.db.runAsync("UPDATE inventories SET title=?,location=?,organization=? WHERE id=? AND owner=? AND state='draft'", metadata.title, metadata.location, organization ? JSON.stringify(organization) : null, id, owner);
+      await this.db.runAsync("UPDATE inventories SET title=?,location=?,organization=? WHERE id=? AND owner=? AND state='draft'",
+        metadata.title, metadata.location, organization ? JSON.stringify(organization) : null, id, owner);
     });
   }
 
   async list(owner: string): Promise<InventorySummary[]> {
-    const rows = await this.db.getAllAsync<Draft & { count: number }>(
+    const rows = await this.db.getAllAsync<Record<string, unknown>>(
       'SELECT inventories.*, (SELECT COUNT(*) FROM items WHERE inventoryId=inventories.id) AS count FROM inventories WHERE owner=? ORDER BY startedAt DESC', owner);
-    return rows.map(row => ({ ...draftSchema.parse(row), count: row.count }));
+    return rows.map(row => {
+      try {
+        return { ...toDraft(row), count: Number(row.count) };
+      } catch {
+        return damagedSummary(row);
+      }
+    });
   }
 
   async get(owner: string, id: string): Promise<Draft> {
-    const row = await this.db.getFirstAsync<Draft>('SELECT * FROM inventories WHERE id=? AND owner=?', id, owner);
+    const row = await this.db.getFirstAsync<Record<string, unknown>>('SELECT * FROM inventories WHERE id=? AND owner=?', id, owner);
     if (!row) throw new Error('Inventário não encontrado nesta conta.');
-    return draftSchema.parse(row);
+    try {
+      return toDraft(row);
+    } catch {
+      throw new Error(DAMAGED_PROBLEM);
+    }
   }
 
   async items(owner: string, id: string): Promise<InventoryItem[]> {
     await this.get(owner, id);
-    const rows = await this.db.getAllAsync<{ json: string }>('SELECT json FROM items WHERE inventoryId=? ORDER BY rowid DESC', id);
-    return rows.map(row => itemSchema.parse(JSON.parse(row.json)));
+    return this.readItems(id);
   }
 
-  add(owner: string, id: string, input: InventoryItem): Promise<void> {
+  private async readItems(id: string): Promise<InventoryItem[]> {
+    const rows = await this.db.getAllAsync<{ id: string; json: string }>('SELECT id, json FROM items WHERE inventoryId=? ORDER BY rowid DESC', id);
+    return rows.map(readStoredItem);
+  }
+
+  add(owner: string, id: string, input: InventoryItem): Promise<InventoryItem> {
     return this.serialize(async () => {
       const draft = await this.get(owner, id);
       if (draft.state !== 'draft') throw new Error('Inventário concluído. Inicie outra coleta para novos itens.');
       const item = itemSchema.parse(input);
+      if (Date.parse(item.capturedAt) < Date.parse(draft.startedAt)) throw new Error(CLOCK_BEHIND);
       const duplicate = await this.db.getFirstAsync<{ id: string }>('SELECT id FROM items WHERE inventoryId=? AND ns=?', id, item.ns);
       if (duplicate) throw new Error(`NS ${item.ns} já foi contado neste inventário.`);
       const totals = await this.itemTotals(id);
       if (totals.count >= MAX_ITEMS) throw new Error(`Limite de ${MAX_ITEMS} itens atingido. Conclua este inventário e inicie outro.`);
       const json = JSON.stringify(item);
-      const envelope = JSON.stringify({ ...this.basePayload(draft, new Date().toISOString()), items: [] });
+      const envelope = JSON.stringify({ ...basePayload(draft, new Date().toISOString()), items: [] });
       const projectedBytes = utf8ByteLength(envelope) + totals.bytes + utf8ByteLength(json) + totals.count;
       if (projectedBytes > MAX_PAYLOAD_BYTES) {
         throw new Error('Limite de 8 MB atingido. Esta unidade não foi salva. Conclua a coleta atual e inicie outra para continuar.');
       }
       await this.db.runAsync('INSERT INTO items(id,inventoryId,ns,json) VALUES (?,?,?,?)', item.id, id, item.ns, json);
+      return item;
+    });
+  }
+
+  // PN and NS are not editable: a wrong reading is removed and read again from the label.
+  updateItem(owner: string, id: string, itemId: string, changes: UnitChanges): Promise<InventoryItem> {
+    return this.serialize(async () => {
+      const draft = await this.get(owner, id);
+      if (draft.state !== 'draft') throw new Error('Inventário concluído não pode ser alterado.');
+      const row = await this.db.getFirstAsync<{ id: string; json: string }>('SELECT id, json FROM items WHERE id=? AND inventoryId=?', itemId, id);
+      if (!row) throw new Error('O item não foi encontrado.');
+      const { patrimony: _previous, ...current } = readStoredItem(row);
+      const patrimony = changes.patrimony?.trim();
+      const item = itemSchema.parse({ ...current, location: changes.location, ...(patrimony ? { patrimony } : {}) });
+      const json = JSON.stringify(item);
+      const totals = await this.itemTotals(id);
+      const envelope = JSON.stringify({ ...basePayload(draft, new Date().toISOString()), items: [] });
+      const projectedBytes = utf8ByteLength(envelope) + totals.bytes - utf8ByteLength(row.json) + utf8ByteLength(json) + Math.max(0, totals.count - 1);
+      if (projectedBytes > MAX_PAYLOAD_BYTES) throw new Error('A alteração aumentaria o inventário além de 8 MB. Use um texto mais curto.');
+      await this.db.runAsync('UPDATE items SET json=? WHERE id=? AND inventoryId=?', json, itemId, id);
+      return item;
     });
   }
 
   importInventories(owner: string, inputs: Inventory[]): Promise<{ imported: number; skipped: number }> {
     return this.serialize(async () => {
-      if (!owner || !inputs.length || inputs.length > 1000) throw new Error('Backup inválido.');
+      if (!owner || !inputs.length || inputs.length > MAX_BACKUP_INVENTORIES) throw new Error('Backup inválido.');
       const inventories = inputs.map(input => inventorySchema.parse(input));
-      let imported = 0;
-      let skipped = 0;
-      await this.db.execAsync('SAVEPOINT restore_backup');
-      try {
+      return this.transaction('restore_backup', async () => {
+        let imported = 0;
+        let skipped = 0;
         for (const inventory of inventories) {
           const existing = await this.db.getFirstAsync<{ owner: string }>('SELECT owner FROM inventories WHERE id=?', inventory.id);
           if (existing) {
@@ -142,12 +304,8 @@ export class InventoryRepository {
           }
           imported++;
         }
-        await this.db.execAsync('RELEASE restore_backup');
         return { imported, skipped };
-      } catch (failure) {
-        await this.db.execAsync('ROLLBACK TO restore_backup; RELEASE restore_backup');
-        throw failure;
-      }
+      });
     });
   }
 
@@ -160,35 +318,36 @@ export class InventoryRepository {
     });
   }
 
+  // Checks only ownership and state, so an inventory whose data can no longer be read can still be deleted.
   deleteInventory(owner: string, id: string): Promise<void> {
-    return this.serialize(async () => {
-      await this.db.execAsync('SAVEPOINT delete_inventory');
-      try {
-        const draft = await this.get(owner, id);
-        if (draft.state === 'sending') throw new Error('Aguarde o envio terminar antes de excluir este inventário.');
-        await this.db.runAsync('DELETE FROM items WHERE inventoryId=?', id);
-        const result = await this.db.runAsync("DELETE FROM inventories WHERE id=? AND owner=? AND state<>'sending'", id, owner);
-        if (!result.changes) throw new Error('O inventário não pode ser excluído no estado atual.');
-        await this.db.execAsync('RELEASE delete_inventory');
-      } catch (failure) {
-        await this.db.execAsync('ROLLBACK TO delete_inventory; RELEASE delete_inventory');
-        throw failure;
-      }
-    });
+    return this.serialize(() => this.transaction('delete_inventory', async () => {
+      const row = await this.db.getFirstAsync<{ owner: string; state: string }>('SELECT owner, state FROM inventories WHERE id=?', id);
+      if (!row || row.owner !== owner) throw new Error('Inventário não encontrado nesta conta.');
+      if (row.state === 'sending') throw new Error('Aguarde o envio terminar antes de excluir este inventário.');
+      await this.db.runAsync('DELETE FROM items WHERE inventoryId=?', id);
+      const result = await this.db.runAsync("DELETE FROM inventories WHERE id=? AND owner=? AND state<>'sending'", id, owner);
+      if (!result.changes) throw new Error('O inventário não pode ser excluído no estado atual.');
+    }));
   }
 
   finish(owner: string, id: string): Promise<void> {
     return this.serialize(async () => {
       const draft = await this.get(owner, id);
       if (draft.state !== 'draft') throw new Error('Este inventário já está concluído.');
-      const completedAt = new Date().toISOString();
-      inventorySchema.parse({ ...this.basePayload(draft, completedAt), items: await this.items(owner, id) });
-      await this.db.runAsync("UPDATE inventories SET completedAt=?,state='queued',lastError='' WHERE id=? AND owner=? AND state='draft'", completedAt, id, owner);
+      const inventory = await this.validated(draft, null);
+      await this.db.runAsync("UPDATE inventories SET completedAt=?,state='queued',lastError='' WHERE id=? AND owner=? AND state='draft'", inventory.completedAt, id, owner);
     });
   }
 
-  private basePayload(draft: Draft, completedAt: string) {
-    return { id: draft.id, title: draft.title, location: draft.location, startedAt: draft.startedAt, completedAt, catalogVersion: draft.catalogVersion, ...(draft.organization ? { organization: draft.organization } : {}) };
+  // Builds the inventory exactly as it will be sent or exported, with the current validation rules.
+  private async validated(draft: Draft, completedAt: string | null): Promise<Inventory> {
+    if (draft.problem) throw new Error(draft.problem);
+    const items = await this.readItems(draft.id);
+    for (const item of items) {
+      const parsed = itemSchema.safeParse(item);
+      if (!parsed.success) throw new Error(`NS ${item.ns}: ${errorMessage(parsed.error)}`);
+    }
+    return inventorySchema.parse({ ...basePayload(draft, completedAt ?? completionTime(draft.startedAt, items)), items });
   }
 
   private async itemTotals(id: string) {
@@ -201,7 +360,7 @@ export class InventoryRepository {
   async payload(owner: string, id: string): Promise<Inventory> {
     const draft = await this.get(owner, id);
     if (!draft.completedAt || draft.state === 'draft') throw new Error('Conclua o inventário antes de enviar.');
-    return inventorySchema.parse({ ...this.basePayload(draft, draft.completedAt), items: await this.items(owner, id) });
+    return this.validated(draft, draft.completedAt);
   }
 
   // A serialized snapshot allows offline backup without freezing a draft or
@@ -209,12 +368,8 @@ export class InventoryRepository {
   snapshot(owner: string, id: string): Promise<Inventory> {
     return this.serialize(async () => {
       const draft = await this.get(owner, id);
-      return inventorySchema.parse({
-        ...this.basePayload(draft, draft.completedAt ?? new Date().toISOString()),
-        items: await this.items(owner, id),
-      });
+      return this.validated(draft, draft.completedAt);
     });
-
   }
 
   // Persisted before any network call, so an interrupted send is never retried silently.
@@ -264,7 +419,9 @@ export class InventoryRepository {
     });
   }
 
-  async saveError(owner: string, id: string, message: string): Promise<void> {
-    await this.db.runAsync('UPDATE inventories SET lastError=? WHERE id=? AND owner=?', message, id, owner);
+  saveError(owner: string, id: string, message: string): Promise<void> {
+    return this.serialize(async () => {
+      await this.db.runAsync('UPDATE inventories SET lastError=? WHERE id=? AND owner=?', message, id, owner);
+    });
   }
 }

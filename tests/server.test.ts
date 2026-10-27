@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, rmdirSync, unlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, rmdirSync, unlinkSync } from 'node:fs';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
@@ -294,9 +294,7 @@ describe('API HTTP com SQLite e dependências externas injetadas', () => {
   });
 
   it('integra exportador real e catálogo antigo sem bloquear a fila offline', async () => {
-    const template = readdirSync(process.cwd()).find(name => /\.xlsx$/i.test(name) && !name.startsWith('~$'));
-    expect(template).toBeDefined();
-    const workbook = await createWorkbookService(join(process.cwd(), template!));
+    const workbook = await createWorkbookService(join(process.cwd(), 'assets', 'catalog', 'sb1-produtos.xlsx'));
     const app = await runtime({ workbook });
     const data = { ...inventory(), catalogVersion: 'offline-before-template-update' };
     const receipt = receiptSchema.parse(await (await app.request('/inventories', data)).json());

@@ -1,5 +1,5 @@
 import { RECIPIENT, type Inventory, type User } from './model';
-import { formatCnpj } from './company';
+import { formatCnpj, organizationKindLabel } from './company';
 
 export type MailAttachment = { filename: string; mimeType: string; content: Uint8Array };
 
@@ -63,6 +63,14 @@ function safeFilename(filename: string): string {
   return filename;
 }
 
+// RFC 5322: an ASCII display name containing specials must be a quoted string; unquoted, "Silva, Joao"
+// would be read as two addresses.
+export function encodeDisplayName(name: string): string {
+  assertHeaderValue(name, 'de nome');
+  if (!/^[\x20-\x7e]*$/.test(name)) return encodeHeaderText(name);
+  return /[()<>[\]:;@\\,."]/.test(name) ? `"${name.replace(/[\\"]/g, '\\$&')}"` : name;
+}
+
 export function inventoryMailText(inventory: Inventory, user: User, warnings: string[], attachments?: MailAttachment[]): string {
   const descriptions = (attachments ?? [
     { filename: 'SB1_Produtos.xlsx' }, { filename: 'Inventario_Ytech.xlsx' },
@@ -79,7 +87,7 @@ export function inventoryMailText(inventory: Inventory, user: User, warnings: st
   return [
     `Inventário: ${inventory.title}`,
     `ID: ${inventory.id}`,
-    `Tipo: ${inventory.organization ? (inventory.organization.kind === 'internal' ? 'Interno' : 'Externo') : 'Não informado'}`,
+    `Tipo: ${organizationKindLabel(inventory.organization)}`,
     `Empresa inventariada: ${inventory.organization?.name ?? 'Não informada'}`,
     `CNPJ: ${inventory.organization ? formatCnpj(inventory.organization.cnpj) : 'Não informado'}`,
     `Responsável: ${user.name} <${user.email}>`,
@@ -105,7 +113,7 @@ export function buildInventoryMessage(input: {
     .join('').replace(/ {2,}/g, ' ').trim() || user.email;
   const boundary = `ytech-${inventory.id}`;
   const lines = [
-    `From: ${encodeHeaderText(senderName)} <${user.email}>`,
+    `From: ${encodeDisplayName(senderName)} <${user.email}>`,
     `To: ${RECIPIENT}`,
     `Subject: ${encodeHeaderText(`Inventário Ytech: ${inventory.title}`)}`,
     `Message-ID: <inventory-${inventory.id}@ytechsolucoes.com>`,

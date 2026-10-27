@@ -1,7 +1,7 @@
 import { ScrollView, Text, View } from 'react-native';
 import { RECIPIENT, type Catalog, type InventoryItem } from '../shared/model';
 import { inventoryReview } from './review';
-import { formatCnpj, type Organization } from '../shared/company';
+import { formatCnpj, organizationKindLabel, type Organization } from '../shared/company';
 import { Button, Notice, styles } from './ui';
 
 export function InventoryReview({ title, organization, items, catalog, busy, online, onFinish, onExport, onBack }: {
@@ -13,7 +13,7 @@ export function InventoryReview({ title, organization, items, catalog, busy, onl
   return <ScrollView contentContainerStyle={styles.content}>
     <Text style={styles.heading}>Conferir inventário</Text>
     <Text style={styles.subheading}>{title}</Text>
-    {organization && <Text selectable style={styles.body}>{organization.kind === 'internal' ? 'Interno' : 'Externo'} · {organization.name}{'\n'}CNPJ: {formatCnpj(organization.cnpj)}</Text>}
+    {organization && <Text selectable style={styles.body}>{organizationKindLabel(organization)} · {organization.name}{'\n'}CNPJ: {formatCnpj(organization.cnpj)}</Text>}
     <View style={styles.panel}>
       <Text style={styles.subheading}>{review.units} unidades · {review.products} PN</Text>
       <Text style={styles.body}>{review.locations} localizações · {review.manual} unidades com digitação manual</Text>

@@ -429,3 +429,142 @@ describe('armazenamento local e fila', () => {
     } finally { sqlite.close(); }
   });
 });
+
+describe('leitura tolerante, relógio, migrações e edição de unidades', () => {
+  const internal = { kind: 'internal' as const, name: YTECH_NAME, cnpj: YTECH_CNPJ };
+
+  it('mantém a lista e a fila utilizáveis quando a empresa salva fica ilegível e exige reparo antes de concluir', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const broken = { ...draft(), organization: internal };
+      await repository.create(broken);
+      await repository.add(broken.owner, broken.id, item());
+      const ready = await queued(repository, { title: 'Pronto' });
+      sqlite.prepare('UPDATE inventories SET organization=? WHERE id=?').run('{não é json', broken.id);
+
+      const listed = await repository.list(broken.owner);
+      expect(listed).toHaveLength(2);
+      expect(listed.find(entry => entry.id === broken.id)?.problem).toContain('identificação da empresa');
+      expect(listed.find(entry => entry.id === ready.id)?.problem).toBeUndefined();
+      const { delivery } = fakeDelivery(async () => sent);
+      await new Outbox(repository, delivery).sync(ready.owner);
+      expect((await repository.get(ready.owner, ready.id)).state).toBe('sent');
+
+      await expect(repository.finish(broken.owner, broken.id)).rejects.toThrow('identificação da empresa');
+      await expect(repository.snapshot(broken.owner, broken.id)).rejects.toThrow('identificação da empresa');
+      expect(await repository.items(broken.owner, broken.id)).toHaveLength(1);
+      await repository.updateMetadata(broken.owner, broken.id, { title: broken.title, location: broken.location, organization: internal });
+      await repository.finish(broken.owner, broken.id);
+      expect((await repository.payload(broken.owner, broken.id)).organization).toEqual(internal);
+    } finally { sqlite.close(); }
+  });
+
+  it('lê empresa gravada sob regras antigas e só exige a regra atual ao concluir', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const d = { ...draft(), organization: internal };
+      await repository.create(d);
+      await repository.add(d.owner, d.id, item());
+      sqlite.prepare('UPDATE inventories SET organization=? WHERE id=?').run(JSON.stringify({ ...internal, name: 'YTECH ANTIGA' }), d.id);
+      const [summary] = await repository.list(d.owner);
+      expect(summary?.problem).toBeUndefined();
+      expect(summary?.organization?.name).toBe('YTECH ANTIGA');
+      await expect(repository.finish(d.owner, d.id)).rejects.toThrow('Ytech Soluções');
+    } finally { sqlite.close(); }
+  });
+
+  it('mostra e permite excluir um inventário com dados ilegíveis sem bloquear os demais', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const healthy = draft();
+      await repository.create(healthy);
+      const damagedId = randomUUID();
+      sqlite.prepare('INSERT INTO inventories(id,owner,title,location,startedAt,catalogVersion,state) VALUES (?,?,?,?,?,?,?)')
+        .run(damagedId, healthy.owner, 'Coleta corrompida', 'MZ01', 'ontem', 'v1', 'queued');
+      const listed = await repository.list(healthy.owner);
+      expect(listed.map(entry => entry.id).sort()).toEqual([healthy.id, damagedId].sort());
+      expect(listed.find(entry => entry.id === damagedId)?.problem).toContain('não puderam ser lidos');
+      await expect(repository.get(healthy.owner, damagedId)).rejects.toThrow('não puderam ser lidos');
+      const { delivery, calls } = fakeDelivery(async () => sent);
+      await expect(new Outbox(repository, delivery).sync(healthy.owner)).rejects.toThrow('não puderam ser lidos');
+      expect(calls.transmit).toEqual([]);
+      await repository.deleteInventory(healthy.owner, damagedId);
+      expect((await repository.list(healthy.owner)).map(entry => entry.id)).toEqual([healthy.id]);
+    } finally { sqlite.close(); }
+  });
+
+  it('recusa leitura anterior ao início da coleta e conclui mesmo após o relógio voltar', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const d = draft();
+      await repository.create(d);
+      await expect(repository.add(d.owner, d.id, { ...item(), capturedAt: '2025-12-31T23:59:00.000Z' })).rejects.toThrow('relógio');
+      expect(await repository.items(d.owner, d.id)).toEqual([]);
+      // Read while the clock was two hours ahead; the clock was corrected before concluding.
+      const ahead = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+      const saved = await repository.add(d.owner, d.id, { ...item(), capturedAt: ahead });
+      expect(saved.capturedAt).toBe(ahead);
+      expect((await repository.snapshot(d.owner, d.id)).completedAt).toBe(ahead);
+      await repository.finish(d.owner, d.id);
+      expect((await repository.payload(d.owner, d.id)).completedAt).toBe(ahead);
+    } finally { sqlite.close(); }
+  });
+
+  it('registra a versão do esquema e não abre dados de uma versão mais nova do app', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      expect(sqlite.prepare('PRAGMA user_version').get()?.user_version).toBe(2);
+      await repository.initialize();
+      expect(sqlite.prepare('PRAGMA user_version').get()?.user_version).toBe(2);
+      sqlite.exec('PRAGMA user_version = 99');
+      await expect(repository.initialize()).rejects.toThrow('versão mais nova');
+    } finally { sqlite.close(); }
+  });
+
+  it('edita localização e patrimônio de uma unidade sem alterar PN, NS ou horário', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const d = draft();
+      await repository.create(d);
+      const original = await repository.add(d.owner, d.id, item('00777'));
+      const edited = await repository.updateItem(d.owner, d.id, original.id, { location: 'MZ02-E01-N01', patrimony: 'pat-9' });
+      expect(edited).toMatchObject({ id: original.id, pn: original.pn, ns: '00777', capturedAt: original.capturedAt, location: 'MZ02-E01-N01', patrimony: 'PAT-9' });
+      expect(await repository.items(d.owner, d.id)).toEqual([edited]);
+      const cleared = await repository.updateItem(d.owner, d.id, original.id, { location: 'MZ02-E01-N01', patrimony: '  ' });
+      expect(cleared.patrimony).toBeUndefined();
+      await expect(repository.updateItem(d.owner, d.id, original.id, { location: 'Sala\tB' })).rejects.toThrow('controle');
+      await expect(repository.updateItem(d.owner, d.id, randomUUID(), { location: 'MZ02' })).rejects.toThrow('não foi encontrado');
+      await expect(repository.updateItem('outra-conta', d.id, original.id, { location: 'MZ02' })).rejects.toThrow('conta');
+      await repository.finish(d.owner, d.id);
+      await expect(repository.updateItem(d.owner, d.id, original.id, { location: 'MZ03' })).rejects.toThrow('concluído');
+    } finally { sqlite.close(); }
+  });
+
+  it('em segundo plano deixa na fila o que depende do ambiente e informa se algo mudou', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const d = await queued(repository);
+      const unavailablePdf = fakeDelivery(async () => sent, { async prepare() { throw new Error('Sem tela para o PDF'); } });
+      expect(await new Outbox(repository, unavailablePdf.delivery).sync(d.owner, { background: true })).toBe(false);
+      const afterPrepare = await repository.get(d.owner, d.id);
+      expect([afterPrepare.state, afterPrepare.lastError]).toEqual(['queued', '']);
+      const noAccount = fakeDelivery(async () => sent, { async accessToken() { throw new Error('Sem sessão'); } });
+      expect(await new Outbox(repository, noAccount.delivery).sync(d.owner, { background: true })).toBe(false);
+      const afterToken = await repository.get(d.owner, d.id);
+      expect([afterToken.state, afterToken.lastError]).toEqual(['queued', '']);
+      expect(unavailablePdf.calls.transmit.length + noAccount.calls.transmit.length).toBe(0);
+      const working = fakeDelivery(async () => sent);
+      const outbox = new Outbox(repository, working.delivery);
+      expect(await outbox.sync(d.owner, { background: true })).toBe(true);
+      expect((await repository.get(d.owner, d.id)).state).toBe('sent');
+      expect(await outbox.sync(d.owner)).toBe(false);
+    } finally { sqlite.close(); }
+  });
+});

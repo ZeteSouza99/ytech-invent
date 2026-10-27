@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Node only: neither the DOM lib nor React Native globals, which would type timers as numbers.
+    "lib": ["ESNext"],
+    "types": ["node"]
+  },
+  "include": ["server/**/*.ts", "app.config.ts", "vitest.config.ts"]
+}

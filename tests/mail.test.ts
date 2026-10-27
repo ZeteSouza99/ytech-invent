@@ -4,9 +4,9 @@ import ExcelJS from 'exceljs';
 import { describe, expect, it, vi } from 'vitest';
 import { companyUser } from '../shared/account';
 import { GMAIL_SEND_SCOPE, transmitGmail } from '../shared/gmail';
-import { buildInventoryMessage, encodeBase64, encodeHeaderText, utf8Encode } from '../shared/mime';
+import { buildInventoryMessage, encodeBase64, encodeDisplayName, encodeHeaderText, utf8Encode } from '../shared/mime';
 import { RECIPIENT, type Inventory, type User } from '../shared/model';
-import { createWorkbookService } from '../src/workbook';
+import { createWorkbookService } from '../shared/workbook';
 import { createGmailDelivery } from '../src/delivery';
 
 const user: User = { sub: '1234', email: 'ana.souza@ytechsolucoes.com', name: 'Ana Souza Conceição' };
@@ -123,6 +123,14 @@ describe('codificação do e-mail', () => {
     expect(() => encodeHeaderText('A\r\nBcc: invasor@example.com')).toThrow('quebra de linha');
   });
 
+  it('coloca entre aspas o nome do remetente com vírgula ou outros sinais de endereço', () => {
+    expect(encodeDisplayName('Ana Souza')).toBe('Ana Souza');
+    expect(encodeDisplayName('Silva, Joao')).toBe('"Silva, Joao"');
+    expect(encodeDisplayName('J. "Jota" Silva')).toBe('"J. \\"Jota\\" Silva"');
+    expect(decodeHeader(encodeDisplayName('Silva, João'))).toBe('Silva, João');
+    expect(() => encodeDisplayName('Ana\r\nBcc: x@example.com')).toThrow('quebra de linha');
+  });
+
   it('monta remetente, destinatário fixo, corpo e anexos sem perder bytes', () => {
     const content = Uint8Array.from({ length: 3000 }, (_, index) => index % 256);
     const sample = inventory();
@@ -133,7 +141,8 @@ describe('codificação do e-mail', () => {
     expect(raw.split('\r\n').every(line => line.length <= 998)).toBe(true);
     expect(raw).not.toMatch(/(^|[^\r])\n/);
     const { headers, parts } = parse(raw);
-    expect(decodeHeader(headers.get('From')!)).toBe(`Ana Bcc: x@example.com <${user.email}>`);
+    // The display name keeps the injected text harmless: no new header, and quoted so ':' and '@' are not address syntax.
+    expect(decodeHeader(headers.get('From')!)).toBe(`"Ana Bcc: x@example.com" <${user.email}>`);
     expect(headers.has('Bcc')).toBe(false);
     expect(headers.get('To')).toBe(RECIPIENT);
     expect(decodeHeader(headers.get('Subject')!)).toBe(`Inventário Ytech: ${sample.title}`);
@@ -165,7 +174,8 @@ describe('codificação do e-mail', () => {
     expect(report.getWorksheet('Inventário')!.getCell('G2').value).toBe(user.email);
   });
 
-  it('o modelo embutido é idêntico à planilha original da pasta', async () => {
+  // The original spreadsheet is not versioned (*.xlsx in .gitignore); the comparison runs where it is kept, not in CI.
+  it.skipIf(process.env.CI === 'true')('o modelo embutido é idêntico à planilha original da pasta', async () => {
     const { readdir } = await import('node:fs/promises');
     const original = (await readdir('.')).filter(name => name.endsWith('.xlsx') && !name.startsWith('~$'));
     expect(original).toHaveLength(1);

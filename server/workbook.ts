@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import type { Catalog, Inventory, User } from '../shared/model.ts';
-import { createWorkbookService as createSharedWorkbookService } from '../src/workbook.ts';
+import { createWorkbookService as createSharedWorkbookService } from '../shared/workbook.ts';
 
 export interface WorkbookService {
   catalog: Catalog;

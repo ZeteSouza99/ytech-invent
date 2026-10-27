@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { encodeBase64 } from '../shared/mime';
 import { errorMessage } from '../shared/model';
-import type { WorkbookAttachment } from './workbook';
+import type { WorkbookAttachment } from '../shared/workbook';
 
 // Uses Android's folder picker; no broad storage permission or network needed.
 // Exporting is independent of the delivery state and never claims an email was sent.

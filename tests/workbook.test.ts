@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import ExcelJS from 'exceljs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -94,9 +94,8 @@ async function fixture(rows: Array<{ pn: ExcelJS.CellValue; code?: ExcelJS.CellV
 }
 
 beforeAll(async () => {
-  const filenames = (await readdir(resolve('.'))).filter(name => name.endsWith('.xlsx'));
-  expect(filenames).toHaveLength(1);
-  originalPath = resolve(filenames[0]!);
+  // The versioned template; mail.test.ts checks locally that it matches the original spreadsheet byte for byte.
+  originalPath = resolve('assets', 'catalog', 'sb1-produtos.xlsx');
   originalBytes = await readFile(originalPath);
   originalWorkbook = await load(originalBytes);
   originalService = await createWorkbookService(originalPath);

@@ -51,7 +51,14 @@ vi.mock('../src/labelEval', () => ({ runLabelEvaluation: vi.fn() }));
 vi.mock('../src/google', () => ({
   accessToken: vi.fn(), configurationError: vi.fn(), login: vi.fn(), logout: vi.fn(), restoreSession: vi.fn(),
 }));
-vi.mock('../src/catalog', () => ({ loadWorkbookService: vi.fn(() => new Promise(() => undefined)) }));
+vi.mock('../src/catalog', () => ({
+  loadWorkbookService: vi.fn(() => new Promise(() => undefined)), loadCatalog: vi.fn(() => new Promise(() => undefined)),
+  importCatalog: vi.fn(), restoreBundledCatalog: vi.fn(),
+}));
+vi.mock('../src/services', () => ({
+  openServices: vi.fn(() => new Promise(() => undefined)), openForegroundServices: vi.fn(() => new Promise(() => undefined)),
+}));
+vi.mock('../src/backgroundSend', () => ({ enableBackgroundSending: vi.fn(), disableBackgroundSending: vi.fn() }));
 vi.mock('../src/delivery', () => ({ createGmailDelivery: vi.fn() }));
 vi.mock('../src/exportFiles', () => ({ saveWorkbookFiles: vi.fn() }));
 vi.mock('../src/shareExport', () => ({ chooseBackup: vi.fn(), createDocument: vi.fn(), shareDocument: vi.fn() }));

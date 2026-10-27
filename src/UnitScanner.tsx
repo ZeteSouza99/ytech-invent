@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, Vibration, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
@@ -109,11 +109,10 @@ export function UnitScanner({
   const savedRef = useRef(savedSerials);
   savedRef.current = savedSerials;
 
-  function serialsToSkip(): ReadonlySet<string> {
-    return new Set([...savedRef.current, ...justSaved.current]);
-  }
+  // Both read only refs and state setters, so they keep the same identity and never restart the capture loop.
+  const serialsToSkip = useCallback((): ReadonlySet<string> => new Set([...savedRef.current, ...justSaved.current]), []);
 
-  function evaluate() {
+  const evaluate = useCallback(() => {
     const next = pool.current.decide({ lockedPn: lockedRef.current, savedSerials: serialsToSkip() });
     setDecision(next);
     if ((next.status === 'ready' || next.status === 'multiple') && !pausedRef.current) {
@@ -121,7 +120,7 @@ export function UnitScanner({
       setPaused(true);
       Vibration.vibrate(next.status === 'ready' ? 60 : [0, 40, 70, 40]);
     }
-  }
+  }, [serialsToSkip]);
 
   function resume() {
     if (closingRef.current) return;
@@ -136,7 +135,7 @@ export function UnitScanner({
   useEffect(() => {
     // A different kept part number invalidates readings taken under the previous rule.
     if (!pausedRef.current) setDecision(pool.current.decide({ lockedPn, savedSerials: serialsToSkip() }));
-  }, [lockedPn]);
+  }, [lockedPn, serialsToSkip]);
 
   useEffect(() => {
     // The preview unmounts in background; capturing before it is ready again would fail.
@@ -190,7 +189,7 @@ export function UnitScanner({
     });
     captureTask.current = task.catch(error => { if (!cancelled) setReadError(errorMessage(error)); });
     return () => { cancelled = true; };
-  }, [active, ready, paused, pictureSize, permission?.granted, catalog]);
+  }, [active, ready, paused, pictureSize, permission?.granted, catalog, evaluate]);
 
   function onCameraReady() {
     setReady(true);

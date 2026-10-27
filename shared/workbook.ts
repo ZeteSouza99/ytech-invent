@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
-import { formatCnpj } from '../shared/company';
-import { normalizeCode, type Catalog, type Inventory, type Product, type User } from '../shared/model';
+import { formatCnpj, organizationKindLabel } from './company';
+import { normalizeCode, type Catalog, type Inventory, type Product, type User } from './model';
 
 export type WorkbookAttachment = { filename: string; mimeType: string; content: Uint8Array };
 
@@ -229,7 +229,7 @@ export async function createWorkbookService(templateBytes: Uint8Array, version: 
       const exportedAt = new Date().toISOString();
       [
         ['Inventário', inventory.title], ['ID', inventory.id],
-          ['Tipo', inventory.organization ? (inventory.organization.kind === 'internal' ? 'Interno' : 'Externo') : 'Não informado'],
+          ['Tipo', organizationKindLabel(inventory.organization)],
           ['Empresa inventariada', inventory.organization?.name ?? 'Não informada'],
           ['CNPJ', inventory.organization ? formatCnpj(inventory.organization.cnpj) : 'Não informado'],
         ['Situação', options.partial ? 'PARCIAL — coleta ainda aberta' : 'Coleta concluída'],

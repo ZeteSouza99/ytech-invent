@@ -1,10 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { analyzeLabel, createCatalogIndex, ReadingPool, type CatalogIndex, type Decision, type LabelScan } from '../shared/labels';
-import { createWorkbookService } from '../src/workbook';
+import { createWorkbookService } from '../shared/workbook';
 
-// ML Kit output (barcodes + OCR lines with positions) for the label photos in the project root,
-// recorded on the Motorola Edge 60 Fusion. They are WhatsApp copies (1600x1200, recompressed),
+// ML Kit output (barcodes + OCR lines with positions) for the label photos kept in tests/fixtures/photos
+// (local only, not versioned), recorded on the Motorola Edge 60 Fusion. They are WhatsApp copies (1600x1200, recompressed),
 // harder than the 12 MP photos taken by the app. The rotated set is the same photos stored sideways
 // with EXIF orientation 6, the way the camera saves them, so ML Kit applies the rotation.
 type Photo = LabelScan & { file: string };

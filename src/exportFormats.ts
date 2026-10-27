@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { formatCnpj } from '../shared/company';
-import { inventorySchema, MAX_PAYLOAD_BYTES, utf8ByteLength, type Inventory } from '../shared/model';
+import { formatCnpj, organizationKindLabel } from '../shared/company';
+import { inventorySchema, MAX_BACKUP_BYTES, MAX_BACKUP_INVENTORIES, MAX_PAYLOAD_BYTES, utf8ByteLength, type Inventory } from '../shared/model';
 
 export type ExportEntry = { inventory: Inventory; partial: boolean };
 export type ExportFormat = 'xlsx' | 'pdf' | 'csv' | 'json';
@@ -12,10 +12,10 @@ export function inventoriesJson(entries: ExportEntry[]): string {
 }
 
 export function parseInventoryBackup(text: string): ExportEntry[] {
-  if (utf8ByteLength(text) > 32 * 1024 * 1024) throw new Error('O arquivo de backup excede 32 MB.');
+  if (utf8ByteLength(text) > MAX_BACKUP_BYTES) throw new Error('O arquivo de backup excede 32 MB.');
   const schema = z.object({
     application: z.literal('YtechInvent'), schemaVersion: z.literal(1), exportedAt: z.iso.datetime(),
-    inventories: z.array(z.object({ inventory: inventorySchema, partial: z.boolean() }).strict()).min(1).max(1000),
+    inventories: z.array(z.object({ inventory: inventorySchema, partial: z.boolean() }).strict()).min(1).max(MAX_BACKUP_INVENTORIES),
   }).strict();
   const result = schema.parse(JSON.parse(text));
   if (result.inventories.some(entry => utf8ByteLength(JSON.stringify(entry.inventory)) > MAX_PAYLOAD_BYTES)) {
@@ -63,7 +63,7 @@ export function inventoriesHtml(entries: ExportEntry[]): string {
   </style></head><body>${entries.map(({ inventory: inv, partial }) => `<section>
     <h1>Ytech Soluções · Inventário</h1><h2>${html(inv.title)}</h2>
     <p class="${partial ? 'partial' : ''}">${partial ? 'PARCIAL — coleta ainda aberta' : 'Coleta concluída'}</p>
-    <p><b>Tipo:</b> ${inv.organization ? (inv.organization.kind === 'internal' ? 'Interno' : 'Externo') : 'Não informado'}</p>
+    <p><b>Tipo:</b> ${organizationKindLabel(inv.organization)}</p>
     <p><b>Empresa inventariada:</b> ${html(inv.organization?.name ?? 'Não informada')}</p>
     <p><b>CNPJ:</b> ${html(inv.organization ? formatCnpj(inv.organization.cnpj) : 'Não informado')}</p>
     <p><b>Localização inicial:</b> ${html(inv.location)}</p>

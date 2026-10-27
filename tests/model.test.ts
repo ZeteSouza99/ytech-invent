@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { codeSchema, inventorySchema, partNumberSchema, utf8ByteLength } from '../shared/model';
+import { codeSchema, errorMessage, inventorySchema, itemSchema, partNumberSchema, utf8ByteLength } from '../shared/model';
+import { organizationKindLabel } from '../shared/company';
 
 describe('valores aceitos para PN e NS', () => {
   it('preserva zeros à esquerda e os caracteres dos PNs especiais do catálogo original', () => {
@@ -44,5 +45,23 @@ describe('contrato de inventário', () => {
     expect(inventorySchema.safeParse({ ...inventory, items: [{ ...item, confirmed: false }] }).success).toBe(false);
     expect(inventorySchema.safeParse({ ...inventory, items: [{ ...item, quantity: 2 }] }).success).toBe(false);
     expect(inventorySchema.safeParse({ ...inventory, items: [{ ...item, capturedAt: '2026-10-01T12:00:00.000Z' }] }).success).toBe(false);
+  });
+
+  it('explica em português o que corrigir, inclusive nas mensagens padrão de validação', () => {
+    const blankPn = itemSchema.safeParse({ ...item, pn: '   ' });
+    expect(blankPn.success).toBe(false);
+    expect(errorMessage(blankPn.error)).not.toMatch(/Too small|expected/i);
+    expect(errorMessage(blankPn.error)).toContain('Pequeno demais');
+    const outside = inventorySchema.safeParse({ ...inventory, items: [{ ...item, capturedAt: '2026-10-01T12:00:00.000Z' }] });
+    expect(errorMessage(outside.error)).toContain('NS 00123');
+    expect(errorMessage(outside.error)).toContain('relógio');
+  });
+});
+
+describe('identificação da empresa', () => {
+  it('descreve o tipo de inventário em um único lugar', () => {
+    expect(organizationKindLabel({ kind: 'internal' })).toBe('Interno');
+    expect(organizationKindLabel({ kind: 'external' })).toBe('Externo');
+    expect(organizationKindLabel(undefined)).toBe('Não informado');
   });
 });

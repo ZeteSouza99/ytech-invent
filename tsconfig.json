@@ -6,9 +6,11 @@
     "allowImportingTsExtensions": true,
     "noUncheckedIndexedAccess": true,
     "esModuleInterop": true,
-    "types": ["node", "react"],
+    // App code runs on Hermes, not Node: Node globals and modules must fail type checking here.
+    // Server and build configuration use tsconfig.server.json; tests use tsconfig.test.json.
+    "types": ["react", "expo/types"],
     "skipLibCheck": true
   },
-  "include": ["App.tsx", "index.ts", "app.config.ts", "src/**/*.ts", "src/**/*.tsx", "shared/**/*.ts", "modules/**/*.ts", "server/**/*.ts", "tests/**/*.ts", "vitest.config.ts"],
+  "include": ["App.tsx", "index.ts", "src/**/*.ts", "src/**/*.tsx", "shared/**/*.ts", "modules/**/*.ts"],
   "exclude": ["node_modules", "android", "ios", "dist", ".tools"]
 }

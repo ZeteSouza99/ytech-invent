@@ -1,124 +1,147 @@
 # Ytech Invent
 
-Aplicativo Android para inventário de equipamentos serializados da Ytech. Versão 1.1.2.
+Aplicativo Android para inventário de equipamentos serializados da Ytech. Versão 1.1.2 (código 4). O histórico de versões está em [CHANGELOG.md](CHANGELOG.md).
 
 ## Como funciona
 
-O aplicativo coleta e guarda os dados no aparelho. O catálogo SB1 está embutido no APK; a exportação das planilhas também acontece localmente. O envio usa a Gmail API com a conta do responsável, para `lorena@ytechsolucoes.com`. O aplicativo atual não depende da API Node/SMTP existente na pasta `server`.
+Tudo acontece no aparelho: os dados ficam num banco local criptografado, o catálogo SB1 vem embutido no APK e as planilhas e o PDF são gerados no próprio celular. O envio usa a Gmail API com a conta do responsável, para `lorena@ytechsolucoes.com`. O app não depende da API da pasta `server/`.
 
-1. Entrar com a conta Google corporativa `@ytechsolucoes.com` (primeiro acesso online).
-2. Criar uma coleta com nome e localização.
-3. Ler a etiqueta ou digitar PN e número de série; conferir e salvar uma unidade.
-4. Usar a busca por PN, NS ou localização para revisar as unidades.
-5. Abrir **Revisar e concluir**, conferir os totais e as pendências e concluir.
-6. Manter o app aberto e conectado para o envio pelo Gmail.
+1. Entrar com a conta Google corporativa `@ytechsolucoes.com` (o primeiro acesso precisa de internet).
+2. Criar uma coleta com nome, localização e empresa (interno ou externo).
+3. Ler a etiqueta ou digitar PN e número de série (NS), conferir e salvar cada unidade.
+4. Buscar por PN, NS ou localização; editar localização e patrimônio de uma unidade ou removê-la.
+5. Abrir **Revisar e concluir**, conferir totais e pendências e concluir.
+6. O envio pelo Gmail acontece com o app aberto e conectado e, quando o Android permite, também em segundo plano.
 
-Cada conta acessa as próprias coletas. Sair não apaga dados; desinstalar ou limpar os dados apaga as coletas locais. Não existe sincronização de inventários entre aparelhos.
+Cada conta acessa só as próprias coletas. Sair não apaga dados; desinstalar ou limpar os dados do app apaga as coletas. Não há sincronização entre aparelhos.
 
-A partir da versão 1.1.2, o envio automático inclui três anexos: o relatório completo em PDF, `Inventario_Ytech.xlsx` e `SB1_Produtos.xlsx`. O PDF usa o mesmo gerador da exportação manual e contém todas as unidades da coleta concluída, incluindo PN fora do catálogo. Se a geração do PDF falhar, o e-mail não é transmitido e o app permite tentar novamente. No Excel, todas as unidades ficam na aba **Inventário**; a aba **Identificação** contém os dados da coleta. O SB1 continua limitado aos produtos conhecidos do catálogo. E-mails já enviados não são alterados nem reenviados automaticamente; para compartilhar o PDF de uma coleta já enviada, use a exportação manual.
+## Leitor de etiquetas
 
-## Leitor
+`expo-camera` fornece a câmera e a leitura ao vivo. O módulo Kotlin [modules/label-reader](modules/label-reader) roda o ML Kit no aparelho para códigos e texto, com a posição de cada um. [shared/labels](shared/labels) combina essas evidências com o catálogo.
 
-`expo-camera` fornece a câmera e a leitura ao vivo. O módulo Kotlin `modules/label-reader` executa ML Kit localmente para códigos e texto, incluindo suas posições. `shared/labels.ts` combina essas evidências com o catálogo.
+- Formatos: Code 128, Code 39, Data Matrix e PDF417.
+- PN e NS são associados por rótulos impressos (P/N, S/N), identificadores (1P, S, GS1) e posição na imagem. MAC, IP, datas e quantidades são descartados.
+- Há correção de caracteres parecidos (O/0, S/5) e aproximação ao catálogo. Uma leitura provável só é aceita quando se repete em outra foto; isso não substitui conferir a etiqueta.
+- Com várias etiquetas na imagem, a central pode ser priorizada; nos casos ambíguos o app pede escolha.
+- "Manter PN" agiliza lotes do mesmo modelo; um PN diferente detectado bloqueia a associação automática.
+- Cada foto é apagada depois da análise, mesmo em erro ou cancelamento. Fotos não são enviadas nem registradas em logs.
 
-- Formatos ativos: Code 128, Code 39, Data Matrix e PDF417.
-- PN e NS são associados por rótulos, identificadores e posição na imagem.
-- O classificador descarta campos como MAC, IP, data e quantidade.
-- Há correções de caracteres semelhantes (O/0, S/5 etc.) e aproximação ao catálogo. A confiança e a repetição entre fotos ajudam a decidir; isso não substitui conferir a etiqueta.
-- Com várias etiquetas, uma claramente centralizada pode ser priorizada; em casos ambíguos o app pede escolha.
-- Manter PN facilita lotes do mesmo modelo. Um PN diferente detectado bloqueia a associação automática.
-- Uma foto permanece sob controle da operação até a análise e a tentativa de exclusão terminarem. Fechar o leitor aguarda essa operação. Falha de limpeza pausa a captura e exige ciência do aviso.
-- Fotos de OCR não são enviadas ao Gmail.
+## Dados, segurança e envio
 
-## Dados e fila
+**Banco local.** SQLite com SQLCipher (AES-256), WAL e gravação síncrona FULL. A chave é aleatória (256 bits), criada no primeiro uso e guardada no SecureStore (Android Keystore). O backup automático do Android está desligado.
 
-SQLite local com WAL e gravação síncrona FULL. Sessão armazenada com SecureStore. O banco não é criptografado; o backup automático Android está desabilitado.
+- Na primeira abertura da versão 1.1.2, o banco antigo sem criptografia (`ytech-invent.db`) é copiado para `ytech-invent-secure.db`. A cópia é conferida (contagem de coletas e unidades e `PRAGMA quick_check`) antes de o arquivo antigo ser apagado. Se a cópia falhar, o app continua com o banco antigo, avisa e tenta de novo na próxima abertura.
+- Se a chave se perder, as coletas criptografadas não podem ser abertas. O app avisa e não apaga nada; não desinstale nem limpe os dados nesse caso.
+- O esquema do banco é versionado com `PRAGMA user_version`. Um banco gravado por uma versão mais nova do app não é aberto.
+- Todas as gravações passam por uma única fila, e operações compostas (excluir, restaurar backup, migrar) rodam em transação.
 
-- Uma unidade por NS; PN e NS não podem ser iguais.
-- NS único por inventário, com zeros iniciais preservados.
-- Até 10.000 unidades ou 8 MiB de dados por inventário.
-- A conclusão valida e congela a coleta antes de qualquer tentativa de rede.
-- Estados: `draft`, `queued`, `sending`, `sent`, `failed`, `uncertain`.
-- A fila tenta enviar a cada 30 segundos em primeiro plano e com internet.
-- Falhas conhecidas exigem tentativa explícita. Queda de conexão, interrupção, HTTP 408/5xx ou resposta sem ID da mensagem ficam como envio a conferir.
-- Reenviar um resultado incerto exige conferir primeiro a pasta Enviados; o Message-ID fixo não garante que o Gmail elimine duplicatas.
-- Sessão inválida ou recibo ilegível não devem derrubar a interface nem apagar unidades.
+**Regras da coleta.**
 
-## Exportação sem Gmail
+- Uma unidade por NS, NS único por inventário (zeros à esquerda preservados), PN diferente do NS.
+- Até 10.000 unidades ou 8 MiB de dados por inventário. Os testes cobrem uma coleta completa nesse limite.
+- Uma leitura com horário anterior ao início da coleta é recusada (relógio do aparelho atrasado). A conclusão nunca fica antes da última leitura, então corrigir o relógio depois não impede concluir ou exportar.
+- Dados gravados por versões antigas que não seguem mais as regras atuais continuam visíveis e marcados para reparo, sem travar as demais coletas nem a fila. Concluir e exportar sempre usam as regras atuais.
 
-**Exportar ou compartilhar arquivo** permite escolher PDF, CSV, JSON ou Excel. Salvar em uma pasta usa o seletor do Android; compartilhar abre os aplicativos instalados. No formato Excel, salvar inclui as duas planilhas; compartilhar permite escolher o relatório ou o SB1. A geração funciona offline e não altera o estado do envio pelo Gmail.
+**Envio.** A conclusão valida e congela a coleta antes de qualquer acesso à rede.
 
-PDF contém empresa, CNPJ, tipo, PN, NS, patrimônio opcional e localização. CSV oferece uma linha por unidade, com campos escapados e proteção contra fórmulas. JSON preserva os identificadores e os dados completos. Em **Conta e dados**, é possível exportar todas as coletas com unidades ou restaurar um backup JSON do **Ytech Invent**. O formato JSON tem identificação/versão própria e não importa automaticamente arquivos do inventapp. Limite de restauração: 32 MB e 1.000 inventários; arquivos acima desses limites não são gerados como backup conjunto. Inventários restaurados ficam em coleta, sem envio automático; IDs existentes são ignorados e a operação é atômica. Coletas vazias não são incluídas na exportação.
+- Estados: `draft` (em coleta), `queued`, `sending`, `sent`, `failed`, `uncertain` (envio a conferir).
+- Com o app aberto, a fila é tentada a cada 30 segundos quando há internet. Com o app fechado, o Android executa a fila em segundo plano no mínimo a cada 15 minutos, quando há rede; o horário exato é decidido pelo sistema. Em segundo plano, o que depende da tela ou da conta (gerar o PDF, renovar o login) fica na fila para a próxima tentativa com o app aberto. Criar, migrar ou recuperar o banco local só acontece com o app aberto.
+- O estado `sending` é gravado antes de transmitir. Queda de conexão, interrupção, HTTP 408/5xx ou resposta sem ID da mensagem ficam como `uncertain`; reenviar exige conferir a pasta Enviados, porque o Message-ID fixo não garante que o Gmail elimine duplicatas.
+- Falhas conhecidas (`failed`) exigem uma nova tentativa explícita.
+- Três anexos: relatório completo em PDF, `Inventario_Ytech.xlsx` e `SB1_Produtos.xlsx`. Se o PDF falhar, nada é transmitido.
 
-Inventários novos possuem tipo **Interno** ou **Externo**. Interno preenche **YTECH SOLUÇÕES — 09.310.663/0001-87**, informado pelo usuário. Externo exige nome e CNPJ válido do cliente. O validador suporta CNPJ numérico e alfanumérico. A identificação é persistida na coleta e incluída no relatório Excel, PDF, CSV, JSON e corpo do e-mail; não altera o layout de importação SB1. Coletas antigas sem empresa continuam legíveis, com identificação não informada até serem editadas.
+## Exportação e backup
 
-Uma coleta aberta pode gerar **cópia parcial** sem bloquear novas leituras. Os nomes dos arquivos e a aba Identificação sinalizam que ela é parcial. Os nomes incluem ID e horário para distinguir exportações. Falha durante a gravação tenta remover somente os arquivos criados nessa tentativa e avisa se restarem arquivos incompletos.
+**Exportar ou compartilhar arquivo** gera PDF, CSV, JSON ou Excel, sem internet e sem alterar o envio pelo Gmail. Salvar usa o seletor de pastas do Android; compartilhar abre os apps instalados. No Excel, salvar inclui as duas planilhas; compartilhar permite escolher uma.
 
-Na versão 1.1.1, **Excluir inventário** aparece dentro da coleta, próximo à exportação. A confirmação informa o nome e a quantidade de unidades e oferece exportar antes. A exclusão remove somente os dados locais daquela conta, em uma transação; e-mails enviados e arquivos exportados permanecem. Envios ainda pendentes são cancelados pela exclusão. Um envio em andamento bloqueia a operação até terminar. A fila verifica novamente a existência do inventário antes de transmitir.
+- PDF: empresa, CNPJ, tipo, PN, NS, patrimônio e localização.
+- CSV: uma linha por unidade, com campos escapados e proteção contra fórmulas.
+- JSON: backup completo do Ytech Invent. Em **Conta e dados** é possível exportar todas as coletas com unidades ou restaurar um backup (até 32 MB e 1.000 inventários; coletas vazias não entram). Coletas restauradas ficam em coleta, sem envio automático; IDs existentes são ignorados e a restauração é tudo ou nada.
+- Uma coleta aberta gera **cópia parcial**, sinalizada nos nomes dos arquivos e na aba Identificação.
+- Ao compartilhar manualmente, confira se a coleta também está na fila automática, para não enviar em dobro.
 
-Ao compartilhar arquivos manualmente, confira se o inventário também está na fila automática para evitar envio duplicado.
+Inventários têm tipo **Interno** (YTECH SOLUÇÕES — 09.310.663/0001-87) ou **Externo** (nome e CNPJ do cliente, numérico ou alfanumérico). A identificação vai para o relatório, o PDF, o CSV, o JSON e o corpo do e-mail, sem alterar o layout SB1.
 
-### SB1_Produtos.xlsx
+**Excluir inventário** fica dentro da coleta. A exclusão é local e atômica; e-mails enviados e arquivos exportados permanecem. Um envio pendente é cancelado; um envio em andamento bloqueia a exclusão.
 
-Preserva o modelo e as abas Produtos, Grupos e Endereço. Exporta uma linha por produto conhecido e não ambíguo, sem inventar cadastros para PN desconhecido. Campos originais e pendências são preservados para revisão. Localização física não preenche automaticamente B1_LOCPAD.
+## Catálogo SB1
 
-### Inventario_Ytech.xlsx
+O catálogo embutido é [assets/catalog/sb1-produtos.xlsx](assets/catalog/sb1-produtos.xlsx). Em **Conta e dados → Importar catálogo SB1 (.xlsx)** é possível trocá-lo sem gerar outro APK: o arquivo é validado com as mesmas regras do modelo embutido antes de substituir o atual e fica guardado no aparelho. **Voltar ao catálogo embutido** desfaz a troca. A versão do catálogo é o SHA-256 do arquivo; cada coleta registra a versão usada e as planilhas avisam quando ela mudou.
 
-Abas Identificação, Inventário, Resumo e Pendências. Registra identificação e versão do catálogo, séries, unidades, localização, origem, responsável e horários. Não é um layout homologado para importação de saldo/séries no TOTVS.
-
-O catálogo é `assets/catalog/sb1-produtos.xlsx`; atualizá-lo exige novo APK. A exportação avisa quando uma coleta usa versão anterior do catálogo.
+- `SB1_Produtos.xlsx`: preserva o modelo e as abas Produtos, Grupos e Endereço. Uma linha por produto conhecido e não ambíguo, sem inventar cadastros para PN desconhecido. A localização física não preenche `B1_LOCPAD`.
+- `Inventario_Ytech.xlsx`: abas Identificação, Inventário (todas as unidades), Resumo e Pendências. Não é um layout homologado de importação de saldos no TOTVS.
 
 ## Configuração Google
 
-O aplicativo usa `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` em `.env`. Nunca coloque senhas em variáveis `EXPO_PUBLIC_*`, pois elas entram no APK.
+O app usa `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` do `.env` (veja [.env.example](.env.example)). Nunca coloque senhas em variáveis `EXPO_PUBLIC_*`: elas entram no APK.
 
-No Google Cloud: Gmail API ativada; cliente Web; cliente Android para `com.ytechsolucoes.invent` com SHA-1 da chave efetivamente usada; consentimento e autorização do escopo `https://www.googleapis.com/auth/gmail.send` para as contas corporativas. O app não lê a caixa de entrada, não requer senha Gmail nem SMTP.
+No Google Cloud: Gmail API ativada; cliente OAuth Web; cliente OAuth Android para `com.ytechsolucoes.invent` com o SHA-1 de cada chave que assina o app; escopo `https://www.googleapis.com/auth/gmail.send` autorizado para as contas corporativas. O app não lê a caixa de entrada nem usa senha ou SMTP.
 
-O usuário informou em 22/10/2026 que login, envio e recebimento reais já foram testados e funcionam. Isso se refere ao fluxo já existente; as alterações novas de interface, exportação e câmera ainda precisam de conferência no dispositivo.
+## Assinatura do APK
 
-## Compilar o APK para instalação manual
+Até a versão 1.1.2 os APKs são assinados com `android/app/debug.keystore`, a chave de debug padrão do template React Native (SHA-1 `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`). Ela é pública: qualquer pessoa pode assinar um APK `com.ytechsolucoes.invent` que o Android aceita como atualização, com acesso aos dados do app. O script de build avisa isso a cada compilação.
 
-Requisitos: Node 24, dependências instaladas, SDK Android com os componentes do projeto e JDK 17. O script procura primeiro `.tools/jdk/jdk-17.0.16`, depois usa JAVA_HOME.
+Para migrar para uma chave privada:
+
+1. Rode `powershell.exe -NoProfile -File scripts/new-release-key.ps1`. Ele cria `%USERPROFILE%\.ytech-invent\ytech-invent-release.jks` (fora do projeto e do OneDrive), pede a senha e mostra o SHA-1. Guarde o arquivo e a senha em local seguro: sem eles não há como atualizar o app instalado.
+2. No Google Cloud, crie um cliente OAuth Android com o mesmo pacote e o SHA-1 novo, **sem remover o atual**.
+3. Escolha como atualizar os aparelhos que já têm o app:
+   - **Rotação de chave (mantém os dados, Android 9 ou superior).** Gere o APK normalmente e assine de novo com `apksigner` (Android SDK build-tools): crie a linhagem uma vez com `apksigner rotate --out lineage.bin --old-signer --ks android\app\debug.keystore --ks-pass pass:android --new-signer --ks %USERPROFILE%\.ytech-invent\ytech-invent-release.jks` e assine com `apksigner sign --ks android\app\debug.keystore --ks-pass pass:android --next-signer --ks %USERPROFILE%\.ytech-invent\ytech-invent-release.jks --lineage lineage.bin --rotation-min-sdk-version 28 --out YtechInvent-rotacionado.apk artifacts\YtechInvent-<versão>.apk`. Confira com `apksigner verify --print-certs -v` e teste num aparelho antes de distribuir. Guarde `lineage.bin` junto da chave.
+   - **Reinstalação.** Exporte todas as coletas (JSON) e confira o arquivo, desinstale, instale o APK gerado com `scripts\build-apk.ps1 -ReleaseKey` e restaure o backup. Coletas restauradas voltam como abertas; os estados de envio não são restaurados.
+4. Depois que todos os aparelhos estiverem na chave nova, use `scripts\build-apk.ps1 -ReleaseKey` nas próximas versões. Um APK assinado só com a chave nova não instala por cima de um assinado com a chave de debug: o Android recusa a instalação e não apaga nada.
+
+## Compilar o APK
+
+Requisitos: Node 24, dependências instaladas, SDK Android e JDK 17 (o script usa `.tools/jdk/jdk-17.0.16` ou `JAVA_HOME`).
 
 ```powershell
 npm.cmd run typecheck
 npm.cmd run lint
 npm.cmd test
-npm.cmd run apk
+npm.cmd run apk          # ou .\scripts\build-apk.ps1 -Offline com o cache do Gradle pronto
 ```
 
-Com dependências Gradle já em cache:
+O script compila uma cópia em `%TEMP%\yi-apk` (cache em `%TEMP%\yi-gradle`), gera `assembleRelease` para ARM de 64 e 32 bits e grava `artifacts\YtechInvent-<versão>.apk` com o SHA-256. O APK traz JavaScript e catálogo embutidos; não precisa do Metro.
 
-```powershell
-.\scripts\build-apk.ps1 -Offline
-```
+A pasta `android/` é gerada pelo Expo e não é versionada. Antes de compilar, o script confere se ela está alinhada com o projeto (versão, SQLCipher e bloco de assinatura) e para com instruções se não estiver. Para regenerá-la, use `npx.cmd expo prebuild --platform android --no-install` **sem** `--clean`, que apagaria a `debug.keystore` usada até a migração da chave.
 
-O script prepara uma cópia em `%TEMP%\yi-apk`, usa cache `%TEMP%\yi-gradle` e compila `assembleRelease`. Por padrão inclui ARM de 64 e 32 bits. O APK contém JavaScript e catálogo; não precisa do Metro. Saída: `artifacts\YtechInvent-1.1.2.apk`.
+**Versão.** O número visível vem só do `package.json`; o `versionCode` fica em [app.config.ts](app.config.ts) e precisa aumentar a cada APK distribuído.
 
-Com um único aparelho conectado e autorizado no ADB, `powershell.exe -NoProfile -File scripts/check-device.ps1` coleta resolução, densidade, escala de fonte, versão instalada, captura de tela e hierarquia visual em `artifacts/device-check`. Execute com o aparelho desbloqueado. O script abre o app, sem alterar tamanho de tela ou escala de fonte, e não cria nem exclui inventários. O funcionamento normal do app pode processar envios já pendentes ao ser aberto.
+`scripts/check-device.ps1`, com um único aparelho conectado e autorizado no ADB, coleta resolução, densidade, escala de fonte, versão instalada, captura de tela e hierarquia visual em `artifacts/device-check`, sem criar nem excluir dados.
 
-Por decisão do usuário, a distribuição manual usa a chave debug já existente em `android/app/debug.keystore`, sem criar outra chave e sem publicação em loja. Preservar pacote e chave permite atualização da instalação compatível. O Android exige assinatura técnica mesmo para instalação manual. Se a instalação existente usar outra chave, não desinstale antes de exportar as coletas.
+## Desenvolvimento
 
-O comando `npm.cmd run build` continua sendo o build da API Node, não do APK.
+| Pasta | Conteúdo |
+|---|---|
+| [App.tsx](App.tsx) | Raiz: junta os hooks, as ações e as telas |
+| [src/app](src/app) | Hooks de sessão, catálogo, dados, conectividade e fila; navegação (reducer) |
+| [src/screens](src/screens) | Telas e o estado do formulário de digitação |
+| [src](src) | Banco (`repository`, `database`), fila (`outbox`, `delivery`, `backgroundSend`), catálogo, exportação, leitor |
+| [shared](shared) | Regras de negócio sem React Native: modelo (zod), empresa, etiquetas, MIME, Gmail, planilhas |
+| [modules/label-reader](modules/label-reader) | Módulo nativo Kotlin com ML Kit |
+| [server](server) | API alternativa (veja abaixo) |
+| [tests](tests) | Vitest em Node; `fixtures/` traz a saída real do ML Kit para as fotos de etiquetas |
 
-## Desenvolvimento e testes
+- `npm.cmd start` inicia o Metro para desenvolvimento; o Expo Go não suporta o módulo próprio.
+- `npm.cmd run typecheck` confere três configurações: [tsconfig.json](tsconfig.json) (app, sem tipos do Node, como no Hermes), [tsconfig.server.json](tsconfig.server.json) e [tsconfig.test.json](tsconfig.test.json).
+- O lint inclui as regras de hooks do React e de promessas não tratadas.
+- O [CI](.github/workflows/ci.yml) roda typecheck, lint e testes a cada push e pull request.
+- As fotos originais das etiquetas ficam em `tests/fixtures/photos`, só na máquina local (fora do git). O teste que compara o modelo embutido com a planilha original da raiz roda só localmente.
 
-`npm.cmd start` inicia o Metro apenas para desenvolvimento do código. `npm.cmd run android` usa a variante release. Expo Go não suporta o módulo próprio. O aplicativo não oferece mais entrada de câmera sem login, telas de diagnóstico ou deep link de avaliação; o pacote expo-dev-client foi removido.
+Os testes cobrem contratos, banco e fila, migrações, leitura tolerante, envio em segundo plano, classificação de etiquetas com a saída real do ML Kit, planilhas, e-mail, exportação, catálogo importado e uma coleta de 10.000 unidades. Câmera, ML Kit nativo, SQLCipher, WorkManager e geração nativa do PDF só podem ser conferidos no aparelho.
 
-O leitor não chama mais o gravador de diagnóstico e não registra PN/NS/texto de etiquetas em logs. Arquivos de teste permanecem como ferramentas de validação do código, fora do fluxo do aplicativo. Release usa `debuggable false`, JavaScript embarcado, Gmail real e o catálogo real. O estado de publicação do consentimento OAuth no Google Cloud é uma configuração externa e não é alterado por variáveis do APK.
+## Conferência no aparelho (pendente)
 
-Validação local da versão 1.1.2: 150 testes automatizados, lint e TypeScript aprovados. Os novos testes verificam os três anexos na mensagem, a preservação de todas as unidades no Excel e a interrupção antes do envio quando o PDF falha, está vazio ou tem tipo incorreto. O renderizador nativo de PDF é simulado nos testes; o envio real dos três anexos ainda precisa de conferência no aparelho após compilar e instalar a atualização (código 4). Nenhum e-mail de teste foi enviado nesta validação.
+Itens da 1.1.2 que os testes automatizados não cobrem:
 
-A compilação da versão 1.1.1 iniciada pelo usuário concluiu em 22/10/2026 com `BUILD SUCCESSFUL` e gerou `artifacts/YtechInvent-1.1.1.apk` (código 3). Esse APK ainda não inclui o PDF no envio automático. A assinatura foi validada com `apksigner`, o pacote e as bibliotecas ARM de 32 e 64 bits foram conferidos, e a flag de depuração está ausente. SHA-256: `553F0939D299FD41DDFB92C7C6E802A08235B5F3EC16678F46CE5D9FFC14829A`.
+1. Atualizar por cima da 1.1.1 com coletas salvas e conferir que todas continuam lá (migração para o banco criptografado).
+2. Concluir uma coleta, fechar o app e verificar o envio em segundo plano; conferir os três anexos no e-mail recebido.
+3. Importar um catálogo SB1, ler um PN que só existe nele e voltar ao embutido.
+4. Editar localização e patrimônio de uma unidade; compartilhar e salvar exportações em PDF, CSV, JSON e Excel.
+5. Uma coleta grande (milhares de unidades): tempo para salvar cada unidade, concluir e gerar o PDF.
 
-A coleta local de diagnóstico identificou Motorola edge 60 fusion, Android 16, tela física 1220 × 2712, densidade 450 e escala de fonte 0,85. Na coleta, a versão instalada ainda era 1.1.0. O teste visual automatizado permanece pendente: a consulta ADB nesta sessão foi bloqueada ao tentar criar `\.android`, e a captura da janela espelhada do Smart Connect não mostrou a área correta.
-
-Em 22/10/2026, a compilação anterior iniciada no PowerShell local concluiu com `BUILD SUCCESSFUL` e gerou `artifacts/YtechInvent-1.1.0.apk` (versão 1.1.0, código 2), instalada pelo usuário. A assinatura desse APK foi verificada com `apksigner`; o pacote é `com.ytechsolucoes.invent`, contém JavaScript embarcado e bibliotecas ARM de 32 e 64 bits, sem a flag de depuração. O APK 1.1.0 não contém a nova exclusão de inventários.
-
-Os testes cobrem contratos, SQLite, fila, classificação de etiquetas, resultados registrados de fotos reais, planilhas, Gmail simulado, exportação e cancelamento/limpeza de capturas. O teste das fotos reproduz dados do ML Kit, não executa a câmera nativa. Testes unitários não substituem a conferência no celular.
+O usuário informou em 22/10/2026 que login, envio e recebimento reais funcionavam na 1.1.1. Aparelho de referência: Motorola edge 60 fusion, Android 16, tela 1220 × 2712, densidade 450, escala de fonte 0,85.
 
 ## API alternativa preservada
 
-`server/` contém Express 5, validação de Google ID token, SQLite Node e Nodemailer. Rotas: GET `/health`, GET `/bootstrap`, POST `/inventories`, GET `/inventories/:id`, POST `/inventories/:id/retry`. Somente `/health` é público. O servidor reusa as regras e o exportador, mas não participa do fluxo móvel atual.
-
-Para usar essa alternativa, configure as variáveis opcionais de servidor em `.env.example`, execute `npm.cmd run build` e `npm.cmd run server:prod`. Ela requer infraestrutura própria e uma instância por banco; não é necessária para instalar ou usar este APK.
+`server/` contém Express 5, validação de Google ID token, SQLite do Node e Nodemailer. Rotas: GET `/health`, GET `/bootstrap`, POST `/inventories`, GET `/inventories/:id`, POST `/inventories/:id/retry`; só `/health` é pública. Ela usa as mesmas regras e o mesmo gerador de planilhas de [shared](shared), mas não participa do fluxo do app. Para usá-la, configure as variáveis de servidor do `.env.example`, rode `npm.cmd run build` e `npm.cmd run server:prod`. Requer infraestrutura própria e uma instância por banco.

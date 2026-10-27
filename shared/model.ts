@@ -1,10 +1,15 @@
 import { z } from 'zod';
 import { organizationSchema } from './company';
 
+// Default validation messages reach the user through errorMessage(); keep them in Portuguese.
+z.config(z.locales.ptBR());
+
 export const COMPANY_DOMAIN = 'ytechsolucoes.com';
 export const RECIPIENT = 'lorena@ytechsolucoes.com';
 export const MAX_ITEMS = 10000;
 export const MAX_PAYLOAD_BYTES = 8 * 1024 * 1024;
+export const MAX_BACKUP_BYTES = 32 * 1024 * 1024;
+export const MAX_BACKUP_INVENTORIES = 1000;
 
 export function utf8ByteLength(text: string): number {
   let bytes = 0;
@@ -96,7 +101,7 @@ export const inventorySchema = z.object({
     serials.add(item.ns);
     ids.add(item.id);
     if (Date.parse(item.capturedAt) < Date.parse(inventory.startedAt) || Date.parse(item.capturedAt) > Date.parse(inventory.completedAt)) {
-      context.addIssue({ code: 'custom', path: ['items', index, 'capturedAt'], message: 'A leitura deve estar dentro do período do inventário.' });
+      context.addIssue({ code: 'custom', path: ['items', index, 'capturedAt'], message: `NS ${item.ns}: o horário da leitura está fora do período da coleta (relógio do aparelho alterado). Remova essa unidade e leia de novo.` });
     }
   });
   if (Date.parse(inventory.completedAt) < Date.parse(inventory.startedAt)) {

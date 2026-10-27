@@ -1,18 +1,19 @@
 import { transmitGmail } from '../shared/gmail';
 import { buildInventoryMessage, type MailAttachment } from '../shared/mime';
 import type { Inventory, User } from '../shared/model';
+import type { WorkbookService } from '../shared/workbook';
 import type { Delivery } from './outbox';
-import type { WorkbookService } from './workbook';
 
 export function createGmailDelivery(options: {
   workbook: () => Promise<WorkbookService>;
   reportPdf: (inventory: Inventory) => Promise<MailAttachment>;
-  user: (owner: string) => User | null;
+  // Resolved on every attempt: in the background there is no screen state to read the account from.
+  user: (owner: string) => User | null | Promise<User | null>;
   accessToken: (owner: string, refresh: boolean) => Promise<string>;
 }): Delivery {
   return {
     async prepare(owner, inventory) {
-      const user = options.user(owner);
+      const user = await options.user(owner);
       if (!user) throw new Error('Entre com a conta responsável por este inventário para enviá-lo.');
       const { attachments, warnings } = await (await options.workbook()).export(inventory, user);
       // Use the same complete report as the manual PDF export. Failure to
