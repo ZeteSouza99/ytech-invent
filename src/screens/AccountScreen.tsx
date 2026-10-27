@@ -25,16 +25,16 @@ export function AccountScreen({
     <View style={styles.panel}>
       <Text style={styles.subheading}>Destino dos inventários</Text>
       <Text selectable style={styles.body}>{RECIPIENT}</Text>
-      <Text style={styles.body}>O envio sai da sua conta Google e fica na sua pasta Enviados. Três anexos: relatório completo em PDF, inventário Excel com séries, quantidades e pendências, e cadastro SB1 no modelo original. Com a conta conectada, o Android também tenta enviar a fila em segundo plano quando há internet; o horário exato é decidido pelo sistema.</Text>
+      <Text style={styles.body}>O envio sai da sua conta Google e fica na sua pasta Enviados. Dois anexos: relatório em PDF e planilha Excel, com PN, descrição, NS, quantidade, patrimônio e localização de cada unidade e a quantidade por PN. Com a conta conectada, o Android também tenta enviar a fila em segundo plano quando há internet; o horário exato é decidido pelo sistema.</Text>
     </View>
     <View style={styles.panel}>
       <Text style={styles.subheading}>Catálogo de produtos</Text>
       <Text style={styles.body}>{catalogText}</Text>
       {catalogWarning && <Notice error>{catalogWarning}</Notice>}
-      {catalog && !!catalog.warnings.length && <Notice>{catalog.warnings.slice(0, 8).join('\n')}{catalog.warnings.length > 8 ? '\nDemais pendências serão detalhadas no relatório.' : ''}</Notice>}
+      {catalog && !!catalog.warnings.length && <Notice>{catalog.warnings.slice(0, 8).join('\n')}{catalog.warnings.length > 8 ? `\nE mais ${catalog.warnings.length - 8} aviso(s).` : ''}</Notice>}
       <Button title="Importar catálogo SB1 (.xlsx)" secondary disabled={busy} onPress={onImportCatalog} />
       {catalogSource === 'imported' && <Button title="Voltar ao catálogo embutido" secondary disabled={busy} onPress={onRestoreCatalog} />}
-      <Text style={styles.body}>O catálogo vale para as próximas leituras e exportações. Coletas já iniciadas registram a versão usada, e as planilhas avisam quando ela mudou.</Text>
+      <Text style={styles.body}>O catálogo é usado para reconhecer os PN na leitura e preencher a descrição nos relatórios. A planilha precisa ter a aba Produtos com as colunas B1_COD, B1_XPART e B1_DESC.</Text>
     </View>
     <Text style={styles.body}>As leituras ficam somente neste aparelho até o envio. Desinstalar o app ou limpar seus dados remove coletas ainda não enviadas.</Text>
     {storageWarning && <Notice error>{storageWarning}</Notice>}

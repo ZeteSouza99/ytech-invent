@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, Text } from 'react-native';
 import { isValidCnpj, YTECH_CNPJ, type Organization } from '../../shared/company';
 import { OrganizationFields } from '../OrganizationFields';
-import { Button, Field, Notice, styles } from '../ui';
+import { Button, Field, styles } from '../ui';
 
 export type InventoryFormValues = { title: string; location: string; kind: Organization['kind']; clientName: string; clientCnpj: string };
 
@@ -23,7 +23,6 @@ export function InventoryFormScreen({ mode, initial, locations, busy, onSubmit, 
     <Field label="Localização inicial" value={values.location} onChangeText={set('location')} placeholder="Ex.: MZ01-E01-N01" maxLength={120} autoCapitalize="characters" />
     <Text style={styles.body}>Endereços do modelo. Escolha um ou informe a localização real:</Text>
     {locations.map(address => <Button key={address} title={address} secondary onPress={() => set('location')(address)} />)}
-    <Notice>A localização física não preenche automaticamente o armazém B1_LOCPAD do TOTVS.</Notice>
     {editing && <Text style={styles.body}>Os itens já salvos mantêm suas localizações. Esta localização será sugerida nas próximas leituras.</Text>}
     <Button title={editing ? 'Salvar identificação' : 'Começar coleta'} disabled={busy || incomplete} onPress={() => onSubmit(values)} />
     <Button title="Voltar" secondary onPress={onBack} />

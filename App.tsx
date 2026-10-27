@@ -15,8 +15,9 @@ import { saveWorkbookFiles } from './src/exportFiles';
 import { ExportScreen } from './src/ExportScreen';
 import { chooseBackup, createDocument, shareDocument } from './src/shareExport';
 import type { ExportEntry, ExportFormat } from './src/exportFormats';
+import { describeFrom } from './shared/report';
 import {
-  useBusyAction, useCatalogState, useConnectivity, useInventoryData, useOutboxSync, useServices, useSession,
+  useBusyAction, useCatalogState, useConnectivity, useCountedPartNumbers, useInventoryData, useOutboxSync, useServices, useSession,
 } from './src/app/hooks';
 import { initialNavigation, navigationReducer, type Screen } from './src/app/navigation';
 import { LoginScreen } from './src/screens/LoginScreen';
@@ -48,6 +49,7 @@ function Application() {
   const user = session.user;
   const owner = user?.sub ?? null;
   const data = useInventoryData(repository, owner, setError);
+  const counted = useCountedPartNumbers(repository, owner, setError);
   useOutboxSync(outbox, owner, online, active, data.reloadList, setError);
 
   const [navigation, dispatch] = useReducer(navigationReducer, initialNavigation);
@@ -178,6 +180,7 @@ function Application() {
   // The list only carries counts; the unit itself is added to the screen without reloading every unit.
   function unitSaved(inventoryId: string, item: InventoryItem) {
     data.changeItems(inventoryId, previous => [item, ...previous]);
+    counted.remember(item.pn);
     data.reloadList().catch(reportError);
   }
 
@@ -229,28 +232,20 @@ function Application() {
     ]);
   }
 
-  async function exportFiles(format: ExportFormat, destination: 'folder' | 'share', workbook = 'report') {
+  async function exportFiles(format: ExportFormat, destination: 'folder' | 'share') {
     if (!repository || !owner) throw new Error('Conta não disponível.');
     const selected = navigation.exportAll ? inventories.filter(entry => entry.count > 0) : current ? [current] : [];
     if (!selected.length) throw new Error('Nenhum inventário com unidades para exportar.');
     const entries: ExportEntry[] = [];
     for (const entry of selected) entries.push({ inventory: await repository.snapshot(owner, entry.id), partial: entry.state === 'draft' });
-    let attachments;
-    if (format === 'xlsx') {
-      if (entries.length !== 1) throw new Error('Exporte as planilhas de um inventário por vez.');
-      const service = await loadWorkbookService();
-      attachments = (await service.export(entries[0]!.inventory, user!, { partial: entries[0]!.partial })).attachments;
-      if (destination === 'share') {
-        const name = workbook === 'sb1' ? 'SB1_Produtos.xlsx' : 'Inventario_Ytech.xlsx';
-        const chosen = attachments.find(attachment => attachment.filename === name);
-        if (!chosen) throw new Error(`A planilha ${name} não foi gerada.`);
-        attachments = [chosen];
-      }
-    } else attachments = [await createDocument(entries, format)];
-    if (destination === 'share') await shareDocument(attachments[0]!);
+    const service = await loadWorkbookService();
+    const attachment = format === 'xlsx'
+      ? await service.spreadsheet(entries)
+      : await createDocument(entries, format, describeFrom(service.catalog.products));
+    if (destination === 'share') await shareDocument(attachment);
     else {
-      const names = await saveWorkbookFiles(attachments, navigation.exportAll ? 'todos' : entries[0]!.inventory.id, entries.some(entry => entry.partial));
-      if (names) Alert.alert('Arquivos salvos', `${names.length} arquivo(s) salvo(s) na pasta escolhida. A exportação não altera o envio pelo Gmail.`);
+      const names = await saveWorkbookFiles([attachment], navigation.exportAll ? 'todos' : entries[0]!.inventory.id, entries.some(entry => entry.partial));
+      if (names) Alert.alert('Arquivo salvo', `${names[0]} salvo na pasta escolhida. A exportação não altera o envio pelo Gmail.`);
     }
   }
 
@@ -264,6 +259,7 @@ function Application() {
         if (session.userRef.current?.sub !== owner) throw new Error('A conta mudou. Selecione o backup novamente.');
         const result = await repository.importInventories(owner, entries.map(entry => entry.inventory));
         await data.reloadList();
+        await counted.reload();
         Alert.alert('Backup restaurado', `${result.imported} importado(s); ${result.skipped} já existente(s). Confira antes de concluir qualquer envio.`);
       }); } },
     ]);
@@ -284,7 +280,7 @@ function Application() {
   function confirmFinish() {
     if (!repository || !owner || !current) return;
     const id = current.id;
-    Alert.alert('Concluir inventário?', `As ${items.length} unidades serão bloqueadas para edição. O app enviará o relatório completo em PDF e as duas planilhas Excel pelo seu Gmail para ${RECIPIENT} quando estiver aberto e conectado. Campos de cadastro pendentes precisam de revisão antes da importação.`, [
+    Alert.alert('Concluir inventário?', `As ${items.length} unidades serão bloqueadas para edição. O app enviará o relatório em PDF e a planilha Excel pelo seu Gmail para ${RECIPIENT} quando houver internet.`, [
       { text: 'Continuar coleta', style: 'cancel' },
       { text: 'Concluir e enviar', onPress: () => { void run(async () => {
         await repository.finish(owner, id);
@@ -364,12 +360,12 @@ function Application() {
         onScan={startScanning} onManual={() => openManualForm()} onReview={() => go('review')} />}
       {screen === 'review' && current && <InventoryReview title={current.title} organization={current.organization} items={items} catalog={catalog} busy={busy} online={online}
         onFinish={confirmFinish} onExport={() => openExport()} onBack={() => go('inventory')} />}
-      {screen === 'export' && <ExportScreen title={navigation.exportAll ? 'Todos os inventários com unidades desta conta' : current?.title ?? ''} all={navigation.exportAll}
+      {screen === 'export' && <ExportScreen title={navigation.exportAll ? 'Todos os inventários com unidades desta conta' : current?.title ?? ''}
         partial={navigation.exportAll ? inventories.some(entry => entry.count > 0 && entry.state === 'draft') : current?.state === 'draft'} busy={busy}
-        onExport={(format, destination, workbook) => { void run(() => exportFiles(format, destination, workbook)); }}
+        onExport={(format, destination) => { void run(() => exportFiles(format, destination)); }}
         onBack={() => go(navigation.exportAll ? 'account' : 'inventory')} />}
       {screen === 'capture' && current && <ManualEntryScreen key={manual.key} initialUnit={manual.unit} catalog={catalog} productsByPn={productsByPn}
-        catalogPns={catalogPns} savedSerials={savedSerials} active={active} location={unitLocation} onLocation={setUnitLocation}
+        catalogPns={catalogPns} countedPns={counted.pns} savedSerials={savedSerials} active={active} location={unitLocation} onLocation={setUnitLocation}
         inventoryLocation={current.location} busy={busy} onSave={saveManual} onBack={() => go('inventory')} />}
       {screen === 'unit' && current && editingUnit && <EditUnitScreen key={editingUnit.id} item={editingUnit} busy={busy}
         onSave={saveUnit} onBack={() => go('inventory')} />}
@@ -383,7 +379,7 @@ function Application() {
         <View style={{ flex: 1 }}><Button title="Conta" secondary onPress={() => go('account')} /></View>
       </View>}
     </>}
-    {scanning && current && <UnitScanner active={active} catalogPns={catalogPns} savedSerials={savedSerials} describe={describe}
+    {scanning && current && <UnitScanner active={active} catalogPns={catalogPns} countedPns={counted.pns} savedSerials={savedSerials} describe={describe}
       location={unitLocation.trim() || current.location} lockedPn={lockedPn} onUnlockPn={() => setLockedPn(null)}
       onClose={() => setScanning(false)} onManual={openManualForm} onSave={saveScanned} />}
   </SafeAreaView>;

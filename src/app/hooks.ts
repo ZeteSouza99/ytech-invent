@@ -209,6 +209,32 @@ export function useInventoryData(repository: InventoryRepository | null, owner: 
   return { inventories, items, selectedId, current, select, reloadList, reloadItems, changeItems, forgetInventory };
 }
 
+// Part numbers already counted by this account on this device. The reader accepts them at the first reading.
+export function useCountedPartNumbers(repository: InventoryRepository | null, owner: string | null, onError: (message: string) => void) {
+  const [pns, setPns] = useState<ReadonlySet<string>>(() => new Set());
+  const ownerRef = useRef(owner);
+  ownerRef.current = owner;
+  const errorRef = useRef(onError);
+  errorRef.current = onError;
+
+  const reload = useCallback(async () => {
+    if (!repository || !owner) {
+      setPns(new Set());
+      return;
+    }
+    const saved = await repository.partNumbers(owner);
+    if (ownerRef.current === owner) setPns(new Set(saved));
+  }, [repository, owner]);
+
+  useEffect(() => { reload().catch(failure => errorRef.current(errorMessage(failure))); }, [reload]);
+
+  const remember = useCallback((pn: string) => {
+    setPns(previous => previous.has(pn) ? previous : new Set([...previous, pn]));
+  }, []);
+
+  return { pns, reload, remember };
+}
+
 // Sends the queue while the app is open, active and online. The list is reloaded only when a state changed.
 export function useOutboxSync(outbox: Outbox | null, owner: string | null, online: boolean, active: boolean,
   reloadList: () => Promise<void>, onError: (message: string) => void) {

@@ -52,7 +52,6 @@ export const productSchema = z.object({
   pn: z.string().min(1).max(120),
   code: z.string().max(120),
   description: z.string().max(2000),
-  issues: z.array(z.string().max(500)),
 }).strict();
 export type Product = z.infer<typeof productSchema>;
 

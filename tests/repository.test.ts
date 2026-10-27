@@ -546,6 +546,24 @@ describe('leitura tolerante, relógio, migrações e edição de unidades', () =
     } finally { sqlite.close(); }
   });
 
+  it('lista os PN já contados da conta, de todos os inventários, sem falhar com registro ilegível', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const first = draft();
+      const second = draft();
+      const other = { ...draft(), owner: 'outra-conta' };
+      for (const d of [first, second, other]) await repository.create(d);
+      await repository.add(first.owner, first.id, item('0001'));
+      await repository.add(second.owner, second.id, { ...item('0002'), pn: 'DS2278-SR00007ZZWW' });
+      await repository.add(second.owner, second.id, item('0003'));
+      await repository.add(other.owner, other.id, { ...item('0004'), pn: 'SO-DA-OUTRA' });
+      sqlite.prepare('INSERT INTO items(id,inventoryId,ns,json) VALUES (?,?,?,?)').run(randomUUID(), first.id, '0009', '{quebrado');
+      expect((await repository.partNumbers(first.owner)).sort()).toEqual(['DS2278-SR00007ZZWW', 'MC3401-0G1R64SS-A6']);
+      expect(await repository.partNumbers('ninguem')).toEqual([]);
+    } finally { sqlite.close(); }
+  });
+
   it('em segundo plano deixa na fila o que depende do ambiente e informa se algo mudou', async () => {
     const { repository, sqlite } = connect();
     try {

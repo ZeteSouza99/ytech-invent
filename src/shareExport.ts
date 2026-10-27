@@ -5,26 +5,26 @@ import * as DocumentPicker from 'expo-document-picker';
 import { randomUUID } from 'expo-crypto';
 import { utf8Encode, type MailAttachment } from '../shared/mime';
 import { MAX_BACKUP_BYTES } from '../shared/model';
+import { reportFilename, type Describe } from '../shared/report';
 import { inventoriesCsv, inventoriesHtml, inventoriesJson, parseInventoryBackup, type ExportEntry, type ExportFormat } from './exportFormats';
 
 const EXPORT_RETENTION_MS = 24 * 60 * 60 * 1000;
 
-export async function createDocument(entries: ExportEntry[], format: Exclude<ExportFormat, 'xlsx'>): Promise<MailAttachment> {
-  const prefix = entries.some(entry => entry.partial) ? 'Inventario_PARCIAL' : 'Inventario';
-  const company = entries.length === 1 ? `_${entries[0]!.inventory.organization?.cnpj ?? entries[0]!.inventory.id}` : '_todos';
+export async function createDocument(entries: ExportEntry[], format: Exclude<ExportFormat, 'xlsx'>, describe: Describe): Promise<MailAttachment> {
+  const filename = reportFilename(entries, format);
   if (format === 'pdf') {
-    const result = await Print.printToFileAsync({ html: inventoriesHtml(entries), base64: false });
+    const result = await Print.printToFileAsync({ html: inventoriesHtml(entries, describe), base64: false });
     const file = new File(result.uri);
     try {
-      return { filename: `${prefix}${company}.pdf`, mimeType: 'application/pdf', content: await file.bytes() };
+      return { filename, mimeType: 'application/pdf', content: await file.bytes() };
     } finally {
       if (file.exists) file.delete();
     }
   }
   return {
-    filename: `${prefix}${company}.${format}`,
+    filename,
     mimeType: format === 'csv' ? 'text/csv' : 'application/json',
-    content: utf8Encode(format === 'csv' ? inventoriesCsv(entries) : inventoriesJson(entries)),
+    content: utf8Encode(format === 'csv' ? inventoriesCsv(entries, describe) : inventoriesJson(entries)),
   };
 }
 

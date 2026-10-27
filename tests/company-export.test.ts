@@ -3,7 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { formatCnpj, isValidCnpj, organizationSchema, YTECH_CNPJ, YTECH_NAME } from '../shared/company';
 import { inventoryMailText } from '../shared/mime';
 import type { Inventory } from '../shared/model';
+import { describeFrom, formatDateTime, REPORT_COLUMNS } from '../shared/report';
 import { inventoriesCsv, inventoriesHtml, inventoriesJson, parseInventoryBackup } from '../src/exportFormats';
+
+const describe1 = describeFrom([{ pn: 'PN-1', description: 'Coletor <modelo> "X"' }]);
 
 function inventory(): Inventory {
   return {
@@ -34,31 +37,44 @@ describe('empresa e exportações', () => {
     malformed.inventories[0].inventory.organization.cnpj = '00000000000000';
     expect(() => parseInventoryBackup(JSON.stringify(malformed))).toThrow();
   });
-  it('escapa CSV e neutraliza fórmulas sem perder os valores no backup', () => {
+  it('CSV simples com ponto e vírgula, uma linha por unidade, campos escapados e fórmulas neutralizadas', () => {
     const inv = inventory();
     inv.title = '=HYPERLINK("url")';
-    inv.items[0]!.location = 'Sala, "A"';
-    const csv = inventoriesCsv([{ inventory: inv, partial: true }]);
-    expect(csv).toContain('"\'=HYPERLINK(""url"")"');
-    expect(csv).toContain('"Sala, ""A"""');
-    expect(csv).toContain('"00123","0004"');
-    expect(csv).toContain('09.310.663/0001-87');
+    inv.items[0]!.location = 'Sala; "A"';
+    const csv = inventoriesCsv([{ inventory: inv, partial: true }], describe1);
+    expect(csv.startsWith('\ufeff')).toBe(true);
+    const [header, row, ...rest] = csv.slice(1).split('\r\n');
+    expect(rest).toEqual([]);
+    expect(header).toBe(REPORT_COLUMNS.map(column => `"${column}"`).join(';'));
+    expect(row).toBe([
+      YTECH_NAME, '09.310.663/0001-87', '\'=HYPERLINK(""url"")', 'PN-1', 'Coletor <modelo> ""X""', '00123', '1', '0004',
+      'Sala; ""A""', formatDateTime('2026-01-01T01:00:00.000Z'),
+    ].map(value => `"${value}"`).join(';'));
   });
-  it('escapa conteúdo de HTML e repete cabeçalhos na impressão do PDF', () => {
+  it('PDF com descrição, quantidade por PN e total, escapando o conteúdo e repetindo o cabeçalho das tabelas', () => {
     const inv = inventory();
     inv.title = '<script>alert("teste")</script>';
-    const output = inventoriesHtml([{ inventory: inv, partial: true }]);
+    inv.items.push({ ...inv.items[0]!, id: randomUUID(), ns: '00124', patrimony: undefined });
+    const output = inventoriesHtml([{ inventory: inv, partial: true }], describe1);
     expect(output).not.toContain('<script>');
     expect(output).toContain('&lt;script&gt;');
+    expect(output).toContain('Coletor &lt;modelo&gt; &quot;X&quot;');
     expect(output).toContain('<thead>');
     expect(output).toContain('PARCIAL');
     expect(output).toContain('09.310.663/0001-87');
     expect(output).toContain('0004');
+    expect(output.match(/<tr class="u">/g)).toHaveLength(2);
+    expect(output).toContain('Quantidade por PN');
+    expect(output).toMatch(/<td>PN-1<\/td><td>Coletor &lt;modelo&gt; &quot;X&quot;<\/td><td class="number">2<\/td>/);
+    expect(output).toMatch(/Total<\/td><td class="number">2</);
+    expect(output).not.toMatch(/TOTVS|SB1|pendênc/i);
   });
-  it('inclui a empresa e seu CNPJ no corpo do e-mail', () => {
-    const body = inventoryMailText(inventory(), { sub: '1', name: 'Pessoa', email: 'pessoa@ytechsolucoes.com' }, []);
+  it('inclui a empresa, o CNPJ e a quantidade por PN no corpo do e-mail', () => {
+    const body = inventoryMailText(inventory(), { sub: '1', name: 'Pessoa', email: 'pessoa@ytechsolucoes.com' });
     expect(body).toContain('Tipo: Interno');
     expect(body).toContain(YTECH_NAME);
     expect(body).toContain('09.310.663/0001-87');
+    expect(body).toContain('Unidades: 1');
+    expect(body).toContain('- PN-1: 1');
   });
 });

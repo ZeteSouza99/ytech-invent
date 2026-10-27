@@ -5,6 +5,7 @@ import { accessToken, restoreSession } from './google';
 import { Outbox } from './outbox';
 import { InventoryRepository } from './repository';
 import { createDocument } from './shareExport';
+import { describeFrom } from '../shared/report';
 
 export type Services = { repository: InventoryRepository; outbox: Outbox; storageWarning: string | null };
 
@@ -39,7 +40,7 @@ async function open(): Promise<Services> {
   await repository.initialize();
   const outbox = new Outbox(repository, createGmailDelivery({
     workbook: loadWorkbookService,
-    reportPdf: inventory => createDocument([{ inventory, partial: false }], 'pdf'),
+    reportPdf: (inventory, catalog) => createDocument([{ inventory, partial: false }], 'pdf', describeFrom(catalog.products)),
     user: async owner => {
       const user = await restoreSession();
       return user?.sub === owner ? user : null;

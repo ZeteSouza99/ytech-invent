@@ -22,12 +22,9 @@ export async function createWorkbookService(templatePath: string): Promise<Workb
   const shared = await createSharedWorkbookService(new Uint8Array(template), version);
   return {
     catalog: shared.catalog,
-    async export(inventory, user) {
-      const result = await shared.export(inventory, user);
-      return {
-        attachments: result.attachments.map(({ filename, content }) => ({ filename, content: Buffer.from(content) })),
-        warnings: result.warnings,
-      };
+    async export(inventory) {
+      const file = await shared.spreadsheet([{ inventory, partial: false }]);
+      return { attachments: [{ filename: file.filename, content: Buffer.from(file.content) }], warnings: [] };
     },
   };
 }

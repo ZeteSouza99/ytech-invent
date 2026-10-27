@@ -1,11 +1,18 @@
 # Histórico de versões
 
-## 1.1.2 (código 4) — não compilada para distribuição
+## 1.1.2 (código 4) — em teste no aparelho
 
-Envio automático com relatório PDF:
+Exportação simples (substitui o modelo TOTVS):
 
-- O e-mail passa a ter três anexos: relatório completo em PDF (o mesmo da exportação manual, com todas as unidades, inclusive PN fora do catálogo), `Inventario_Ytech.xlsx` e `SB1_Produtos.xlsx`. Se o PDF falhar, estiver vazio ou tiver tipo incorreto, nada é transmitido e o app permite tentar de novo.
-- E-mails já enviados não são alterados nem reenviados.
+- PDF, Excel e CSV trazem a mesma tabela: uma linha por unidade com Empresa, CNPJ, Inventário, PN, Descrição, NS, Quantidade, Patrimônio, Localização e Data da leitura. O PDF e o Excel também trazem a quantidade por PN e o total.
+- Não há mais `SB1_Produtos.xlsx` nem as abas Identificação e Pendências; o catálogo SB1 continua servindo para reconhecer os PN e preencher a descrição.
+- O e-mail automático leva dois anexos, o PDF e a planilha Excel, e o corpo traz a quantidade por PN. Se o PDF falhar, estiver vazio ou tiver tipo incorreto, nada é transmitido e o app permite tentar de novo. E-mails já enviados não são alterados nem reenviados.
+- A planilha Excel funciona também para todos os inventários da conta de uma vez.
+- O CSV usa `;` como separador, o padrão do Excel em português.
+
+Leitor:
+
+- PN já contado pela conta neste aparelho é aceito na primeira foto, inclusive quando o OCR erra um caractere (corrigido para o PN conhecido). Um PN salvo durante a leitura já vale para a unidade seguinte.
 
 Segurança e dados:
 
@@ -26,7 +33,6 @@ Funcionalidades:
 Correções:
 
 - Nome do remetente com vírgula ou outros sinais de endereço passa a ir entre aspas no cabeçalho `From`.
-- No compartilhamento do Excel, a planilha é escolhida pelo nome, não pela posição.
 
 Projeto:
 
@@ -34,8 +40,8 @@ Projeto:
 - `App.tsx` dividido em hooks, telas e um reducer de navegação; `shared/labels.ts` dividido em módulos; gerador de planilhas movido para `shared/`.
 - TypeScript separado para app (sem tipos do Node), servidor e testes; lint com regras de hooks e de promessas não tratadas.
 - Versão visível lida do `package.json`; o script de build confere se `android/` está alinhada com o projeto.
-- Preparação para a chave de assinatura privada: `scripts/new-release-key.ps1` e `scripts/build-apk.ps1 -ReleaseKey`.
-- Dependências: Expo 57.0.31, zod 4.6.7, TypeScript 6.0 e correções do servidor (express, nodemailer, express-rate-limit).
+- A assinatura continua com a chave de debug, por decisão de distribuição só interna; ficam disponíveis `scripts/new-release-key.ps1` e `scripts/build-apk.ps1 -ReleaseKey` caso isso mude.
+- Dependências: Expo 57.0.31, zod 4.6.7, TypeScript 6.0 e correções do servidor (express, nodemailer, express-rate-limit). `npm audit` sem alertas: node-forge 1.4.1 e o zod do `@expo/cli` forçado para 4.6.7 por `overrides`.
 - Removido o gravador de diagnóstico de leituras, que não era usado.
 
 ## 1.1.1 (código 3)

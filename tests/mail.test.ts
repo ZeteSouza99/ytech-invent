@@ -43,31 +43,37 @@ function parse(raw: string) {
 }
 
 describe('codificação do e-mail', () => {
-  it('o envio automático inclui o PDF completo antes das planilhas, preservando todas as unidades', async () => {
+  it('o envio automático leva o PDF completo e a planilha simples, preservando todas as unidades', async () => {
     const service = await createWorkbookService(new Uint8Array(await readFile('assets/catalog/sb1-produtos.xlsx')), 'v1');
     const sample = inventory();
     sample.items.push({ ...sample.items[0]!, id: randomUUID(), pn: 'FORA-DO-CATALOGO', ns: '000456', patrimony: 'PAT-001' });
     const pdfBytes = utf8Encode('%PDF-1.7\nfixture-do-renderizador-nativo');
     const reportPdf = vi.fn(async () => ({ filename: 'Inventario.pdf', mimeType: 'application/pdf', content: pdfBytes }));
     const delivery = createGmailDelivery({ workbook: async () => service, reportPdf, user: () => user, accessToken: async () => 'token' });
-    const { raw } = await delivery.prepare(user.sub, sample);
-    expect(reportPdf).toHaveBeenCalledExactlyOnceWith(sample);
+    const { raw, warnings } = await delivery.prepare(user.sub, sample);
+    expect(warnings).toEqual([]);
+    expect(reportPdf).toHaveBeenCalledExactlyOnceWith(sample, service.catalog);
     const { parts, headers } = parse(raw);
     expect(headers.get('To')).toBe(RECIPIENT);
-    expect(parts).toHaveLength(4);
-    expect(parts[0]!.content.toString('utf8')).toContain('- Inventario.pdf: relatório completo');
-    expect(parts[0]!.content.toString('utf8')).toContain('Itens: 2');
+    expect(parts).toHaveLength(3);
+    const body = parts[0]!.content.toString('utf8');
+    expect(body).toContain('- Inventario.pdf: relatório');
+    expect(body).toContain(`- Inventario_${sample.id}.xlsx: planilha com todas as unidades`);
+    expect(body).toContain('Unidades: 2');
+    expect(body).toContain('- EC300K-1SA2AA6: 1');
+    expect(body).toContain('- FORA-DO-CATALOGO: 1');
+    expect(body).not.toMatch(/SB1|TOTVS|Pendências/);
     expect(parts[1]!.head).toContain('Content-Type: application/pdf');
     expect(Uint8Array.from(parts[1]!.content)).toEqual(pdfBytes);
-    expect(parts[2]!.head).toContain('filename="SB1_Produtos.xlsx"');
-    expect(parts[3]!.head).toContain('filename="Inventario_Ytech.xlsx"');
+    expect(parts[2]!.head).toContain(`filename="Inventario_${sample.id}.xlsx"`);
     const report = new ExcelJS.Workbook();
-    await report.xlsx.load(Uint8Array.from(parts[3]!.content).buffer);
+    await report.xlsx.load(Uint8Array.from(parts[2]!.content).buffer);
     const rows = report.getWorksheet('Inventário')!;
     expect(rows.rowCount).toBe(3);
-    expect(rows.getCell('B2').value).toBe('000123');
-    expect(rows.getCell('B3').value).toBe('000456');
-    expect(rows.getCell('M3').value).toBe('PAT-001');
+    expect(rows.getCell('F2').value).toBe('000123');
+    expect(rows.getCell('F3').value).toBe('000456');
+    expect(rows.getCell('H3').value).toBe('PAT-001');
+    expect(report.getWorksheet('Resumo')!.getCell('E4').value).toBe(2);
   });
 
   it('interrompe a preparação se o PDF falhar, sem produzir e-mail incompleto', async () => {
@@ -91,18 +97,11 @@ describe('codificação do e-mail', () => {
     await expect(delivery.prepare(user.sub, inventory())).rejects.toThrow('relatório PDF completo');
   });
 
-  it('relatório parcial identifica a coleta aberta sem alterar o contrato do SB1', async () => {
+  it('cópia parcial é identificada no nome da planilha', async () => {
     const service = await createWorkbookService(new Uint8Array(await readFile('assets/catalog/sb1-produtos.xlsx')), 'v1');
     const data = inventory();
-    const result = await service.export(data, user, { partial: true });
-    const report = new ExcelJS.Workbook();
-    await report.xlsx.load(result.attachments[1]!.content.slice().buffer);
-    const metadata = report.getWorksheet('Identificação')!;
-    expect(metadata.getCell('B3').value).toBe(data.id);
-    const status = metadata.getRows(1, metadata.rowCount)!.find(row => row.getCell(1).value === 'Situação');
-    expect(status?.getCell(2).value).toContain('PARCIAL');
-    expect(result.warnings.some(message => message.includes('CÓPIA PARCIAL'))).toBe(true);
-    expect(result.attachments.map(file => file.filename)).toEqual(['SB1_Produtos.xlsx', 'Inventario_Ytech.xlsx']);
+    const file = await service.spreadsheet([{ inventory: data, partial: true }]);
+    expect(file.filename).toBe(`Inventario_PARCIAL_${data.id}.xlsx`);
   });
   it('codifica UTF-8 e Base64 exatamente como o Node', () => {
     for (const text of ['', 'a', 'Inventário', '漢字', '😀 ok', '\ud800x']) {
@@ -135,8 +134,8 @@ describe('codificação do e-mail', () => {
     const content = Uint8Array.from({ length: 3000 }, (_, index) => index % 256);
     const sample = inventory();
     const raw = buildInventoryMessage({
-      inventory: sample, user: { ...user, name: 'Ana\r\nBcc: x@example.com' }, warnings: ['aviso'],
-      attachments: [{ filename: 'SB1_Produtos.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', content }],
+      inventory: sample, user: { ...user, name: 'Ana\r\nBcc: x@example.com' },
+      attachments: [{ filename: 'Inventario.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', content }],
     });
     expect(raw.split('\r\n').every(line => line.length <= 998)).toBe(true);
     expect(raw).not.toMatch(/(^|[^\r])\n/);
@@ -150,28 +149,25 @@ describe('codificação do e-mail', () => {
     const body = parts[0]!.content.toString('utf8');
     expect(body).toContain(`ID: ${sample.id}`);
     expect(body).toContain('Responsável: Ana');
-    expect(body).toContain('Pendências para revisão: 1');
-    expect(parts[1]!.head).toContain('filename="SB1_Produtos.xlsx"');
+    expect(body).toContain('Quantidade por PN:\n- EC300K-1SA2AA6: 1');
+    expect(parts[1]!.head).toContain('filename="Inventario.xlsx"');
     expect(Uint8Array.from(parts[1]!.content)).toEqual(content);
-    expect(() => buildInventoryMessage({ inventory: sample, user, warnings: [], attachments: [{ filename: '../x.xlsx', mimeType: 'a/b', content }] }))
+    expect(() => buildInventoryMessage({ inventory: sample, user, attachments: [{ filename: '../x.xlsx', mimeType: 'a/b', content }] }))
       .toThrow('Nome de anexo inválido');
   });
 
-  it('leva as duas planilhas reais no e-mail e elas abrem no Excel', async () => {
+  it('leva a planilha real no e-mail e ela abre no Excel', async () => {
     const template = new Uint8Array(await readFile('assets/catalog/sb1-produtos.xlsx'));
     const service = await createWorkbookService(template, 'v1');
     const sample = inventory();
-    const { attachments, warnings } = await service.export(sample, user);
-    expect(attachments.every(attachment => attachment.content instanceof Uint8Array && !Buffer.isBuffer(attachment.content))).toBe(true);
-    const { parts } = parse(buildInventoryMessage({ inventory: sample, user, warnings, attachments }));
-    expect(parts).toHaveLength(3);
-    const sb1 = new ExcelJS.Workbook();
-    await sb1.xlsx.load(Uint8Array.from(parts[1]!.content).buffer);
-    expect(sb1.getWorksheet('Produtos')!.getCell('B4').value).toBe('EC300K-1SA2AA6');
+    const spreadsheet = await service.spreadsheet([{ inventory: sample, partial: false }]);
+    expect(spreadsheet.content instanceof Uint8Array && !Buffer.isBuffer(spreadsheet.content)).toBe(true);
+    const { parts } = parse(buildInventoryMessage({ inventory: sample, user, attachments: [spreadsheet] }));
+    expect(parts).toHaveLength(2);
     const report = new ExcelJS.Workbook();
-    await report.xlsx.load(Uint8Array.from(parts[2]!.content).buffer);
-    expect(report.getWorksheet('Inventário')!.getCell('B2').value).toBe('000123');
-    expect(report.getWorksheet('Inventário')!.getCell('G2').value).toBe(user.email);
+    await report.xlsx.load(Uint8Array.from(parts[1]!.content).buffer);
+    expect(report.getWorksheet('Inventário')!.getCell('D2').value).toBe('EC300K-1SA2AA6');
+    expect(report.getWorksheet('Inventário')!.getCell('F2').value).toBe('000123');
   });
 
   // The original spreadsheet is not versioned (*.xlsx in .gitignore); the comparison runs where it is kept, not in CI.

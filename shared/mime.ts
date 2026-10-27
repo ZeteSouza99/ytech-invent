@@ -1,5 +1,6 @@
 import { RECIPIENT, type Inventory, type User } from './model';
 import { formatCnpj, organizationKindLabel } from './company';
+import { formatDateTime } from './report';
 
 export type MailAttachment = { filename: string; mimeType: string; content: Uint8Array };
 
@@ -71,19 +72,19 @@ export function encodeDisplayName(name: string): string {
   return /[()<>[\]:;@\\,."]/.test(name) ? `"${name.replace(/[\\"]/g, '\\$&')}"` : name;
 }
 
-export function inventoryMailText(inventory: Inventory, user: User, warnings: string[], attachments?: MailAttachment[]): string {
-  const descriptions = (attachments ?? [
-    { filename: 'SB1_Produtos.xlsx' }, { filename: 'Inventario_Ytech.xlsx' },
-  ]).map(file => {
-    const description = file.filename.endsWith('.pdf')
-      ? 'relatório completo com empresa, CNPJ, PN, números de série, patrimônio e localização de todas as unidades.'
-      : file.filename === 'SB1_Produtos.xlsx'
-        ? 'modelo de importação SB1, somente com produtos conhecidos do catálogo. Revise antes de importar.'
-        : file.filename === 'Inventario_Ytech.xlsx'
-          ? 'todas as unidades na aba Inventário; totais na aba Resumo e pendências nas demais abas.'
-          : 'arquivo do inventário.';
-    return `- ${file.filename}: ${description}`;
-  });
+const QUANTITY_LINES = 50;
+
+function attachmentDescription(filename: string): string {
+  if (filename.endsWith('.pdf')) return 'relatório com empresa, PN, descrição, número de série, patrimônio e localização de cada unidade, e a quantidade por PN.';
+  if (filename.endsWith('.xlsx')) return 'planilha com todas as unidades (aba Inventário) e a quantidade por PN (aba Resumo).';
+  if (filename.endsWith('.csv')) return 'tabela com todas as unidades.';
+  return 'arquivo do inventário.';
+}
+
+export function inventoryMailText(inventory: Inventory, user: User, attachments: readonly Pick<MailAttachment, 'filename'>[] = []): string {
+  const counts = new Map<string, number>();
+  for (const item of inventory.items) counts.set(item.pn, (counts.get(item.pn) ?? 0) + item.quantity);
+  const quantities = [...counts.entries()].sort(([left], [right]) => left.localeCompare(right));
   return [
     `Inventário: ${inventory.title}`,
     `ID: ${inventory.id}`,
@@ -92,22 +93,21 @@ export function inventoryMailText(inventory: Inventory, user: User, warnings: st
     `CNPJ: ${inventory.organization ? formatCnpj(inventory.organization.cnpj) : 'Não informado'}`,
     `Responsável: ${user.name} <${user.email}>`,
     `Local: ${inventory.location}`,
-    `Itens: ${inventory.items.length}`,
-    `Início: ${inventory.startedAt}`,
-    `Conclusão: ${inventory.completedAt}`,
-    `Pendências para revisão: ${warnings.length}`,
+    `Início: ${formatDateTime(inventory.startedAt)}`,
+    `Conclusão: ${formatDateTime(inventory.completedAt)}`,
+    `Unidades: ${inventory.items.length}`,
     '',
-    'Anexos:',
-    ...descriptions,
+    'Quantidade por PN:',
+    ...quantities.slice(0, QUANTITY_LINES).map(([pn, quantity]) => `- ${pn}: ${quantity}`),
+    ...(quantities.length > QUANTITY_LINES ? [`- e mais ${quantities.length - QUANTITY_LINES} PN; veja a planilha.`] : []),
+    ...(attachments.length ? ['', 'Anexos:', ...attachments.map(file => `- ${file.filename}: ${attachmentDescription(file.filename)}`)] : []),
     '',
     'Enviado pelo aplicativo Ytech Invent a partir da conta do responsável.',
   ].join('\n');
 }
 
-export function buildInventoryMessage(input: {
-  inventory: Inventory; user: User; warnings: string[]; attachments: MailAttachment[];
-}): string {
-  const { inventory, user, warnings, attachments } = input;
+export function buildInventoryMessage(input: { inventory: Inventory; user: User; attachments: MailAttachment[] }): string {
+  const { inventory, user, attachments } = input;
   if (!/^[^\s@<>"]+@[^\s@<>"]+$/.test(user.email)) throw new Error('E-mail do responsável inválido.');
   const senderName = [...user.name].map(character => (character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127 ? ' ' : character))
     .join('').replace(/ {2,}/g, ' ').trim() || user.email;
@@ -124,7 +124,7 @@ export function buildInventoryMessage(input: {
     'Content-Type: text/plain; charset="UTF-8"',
     'Content-Transfer-Encoding: base64',
     '',
-    wrapBase64(utf8Encode(inventoryMailText(inventory, user, warnings, attachments))),
+    wrapBase64(utf8Encode(inventoryMailText(inventory, user, attachments))),
   ];
   for (const attachment of attachments) {
     const filename = safeFilename(attachment.filename);

@@ -29,11 +29,12 @@ const EVIDENCE: Record<Evidence, string> = {
   codigo: 'código de barras',
   identificador: 'identificador (1P)/(S)',
   rotulo: 'rótulo impresso',
-  catalogo: 'catálogo SB1',
-  'catalogo-aproximado': 'semelhante ao catálogo',
+  catalogo: 'catálogo',
+  'catalogo-aproximado': 'semelhante a um PN conhecido',
   padrao: 'formato de série',
   texto: 'texto impresso',
   'digitos-corrigidos': 'dígitos ajustados',
+  historico: 'PN já contado',
   fixado: 'PN mantido',
 };
 
@@ -61,10 +62,12 @@ function ReadingRow({ label, reading, confirmations, description }: {
 }
 
 export function UnitScanner({
-  active, catalogPns, describe, lockedPn = null, savedSerials, location, onSave, onUse, onManual, onUnlockPn, onClose,
+  active, catalogPns, countedPns, describe, lockedPn = null, savedSerials, location, onSave, onUse, onManual, onUnlockPn, onClose,
 }: {
   active: boolean;
   catalogPns: readonly string[];
+  // Part numbers already counted by this account; recognized at the first photo.
+  countedPns?: ReadonlySet<string>;
   describe?: (pn: string) => string | undefined;
   lockedPn?: string | null;
   savedSerials: ReadonlySet<string>;
@@ -79,7 +82,12 @@ export function UnitScanner({
 }) {
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
+  // Kept for the whole session so remembering a counted part number never restarts the capture loop.
   const catalog = useMemo(() => createCatalogIndex(catalogPns), [catalogPns]);
+  const inCatalog = useMemo(() => new Set(catalogPns), [catalogPns]);
+  useEffect(() => {
+    for (const pn of countedPns ?? []) catalog.remember(pn);
+  }, [catalog, countedPns]);
   const pool = useRef(new ReadingPool());
   const [ready, setReady] = useState(false);
   const [pictureSize, setPictureSize] = useState<string | null>(chosenPictureSize);
@@ -222,7 +230,7 @@ export function UnitScanner({
   const describePn = (pn?: Reading) => {
     if (!pn) return undefined;
     const description = describe?.(pn.value);
-    return description ?? (catalog.has(pn.value) ? undefined : 'PN fora do catálogo: ficará como pendência no relatório.');
+    return description ?? (inCatalog.has(pn.value) ? undefined : 'PN fora do catálogo: será salvo sem descrição.');
   };
 
   async function save(selected: ScannedUnit) {
@@ -233,6 +241,8 @@ export function UnitScanner({
     try {
       const text = await onSave(selected, keepPn);
       justSaved.current.add(selected.ns.value);
+      // The next unit of the same model is recognized at the first photo.
+      catalog.remember(selected.pn.value);
       setMessage({ text, error: false });
       Vibration.vibrate(30);
       resume();

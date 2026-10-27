@@ -3,22 +3,17 @@ import { inventoryReview } from '../src/review';
 import type { Catalog, InventoryItem } from '../shared/model';
 
 describe('revisão antes de concluir', () => {
-  it('conta unidades e PNs distintos, incluindo cadastro com conflito e locais livres', () => {
+  it('conta unidades, PNs distintos, localizações, PN fora do catálogo e digitação manual', () => {
     const catalog: Catalog = {
-      version: 'v1', locations: ['A'], warnings: [], products: [
-        { pn: 'KNOWN', code: '1', description: 'Produto', issues: [] },
-        { pn: 'CONFLICT', code: '', description: '', issues: ['PN ambíguo'] },
-      ],
+      version: 'v1', locations: ['A'], warnings: [], products: [{ pn: 'KNOWN', code: '1', description: 'Produto' }],
     };
     const items = [
       { pn: 'KNOWN', location: 'A', source: 'barcode' },
       { pn: 'KNOWN', location: 'A', source: 'manual' },
       { pn: 'NEW', location: 'B', source: 'manual' },
       { pn: 'NEW', location: 'B', source: 'ocr' },
-      { pn: 'CONFLICT', location: 'A', source: 'barcode' },
     ] as InventoryItem[];
-    expect(inventoryReview(items, catalog)).toEqual({
-      units: 5, products: 3, locations: 2, unknown: ['NEW'], pending: ['CONFLICT'], otherLocations: ['B'], manual: 2,
-    });
+    expect(inventoryReview(items, catalog)).toEqual({ units: 4, products: 2, locations: 2, unknown: ['NEW'], manual: 2 });
+    expect(inventoryReview(items, null).unknown).toEqual(['KNOWN', 'NEW']);
   });
 });

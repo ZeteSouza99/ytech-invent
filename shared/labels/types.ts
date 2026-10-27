@@ -14,6 +14,7 @@ export type Evidence =
   | 'padrao'              // matches the serial layouts found on the labels
   | 'texto'               // read from printed characters (OCR)
   | 'digitos-corrigidos'  // OCR letters mapped to digits by the serial layout
+  | 'historico'           // part number already counted by this account
   | 'fixado';             // part number kept from the previous unit
 
 export type Reading = {

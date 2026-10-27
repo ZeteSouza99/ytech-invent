@@ -25,10 +25,9 @@ async function workbookCheck(unit: ScannedUnit | null): Promise<string> {
     items: [{ id: randomUUID(), pn, ns, location, quantity: 1, capturedAt: now, source: 'manual', rawPn: pn, rawNs: ns, confirmed: true }],
   };
   const user = { sub: 'diagnostico', email: 'diagnostico@ytechsolucoes.com', name: 'Diagnóstico' };
-  const { attachments, warnings } = await service.export(sample, user);
-  const raw = buildInventoryMessage({ inventory: sample, user, warnings, attachments });
-  const sizes = attachments.map(attachment => `${attachment.filename} ${(attachment.content.length / 1024).toFixed(1)} KB`).join(', ');
-  return `Catálogo: ${service.catalog.products.length} PN em ${loaded - started} ms.\nPlanilhas: ${sizes}, geradas em ${Date.now() - loaded} ms.\nE-mail montado: ${(raw.length / 1024).toFixed(1)} KB. Nada foi enviado.`;
+  const spreadsheet = await service.spreadsheet([{ inventory: sample, partial: false }]);
+  const raw = buildInventoryMessage({ inventory: sample, user, attachments: [spreadsheet] });
+  return `Catálogo: ${service.catalog.products.length} PN em ${loaded - started} ms.\nPlanilha: ${spreadsheet.filename} ${(spreadsheet.content.length / 1024).toFixed(1)} KB, gerada em ${Date.now() - loaded} ms.\nE-mail montado: ${(raw.length / 1024).toFixed(1)} KB. Nada foi enviado.`;
 }
 
 export function CameraDiagnostics({ onClose }: { onClose: () => void }) {
@@ -51,7 +50,7 @@ export function CameraDiagnostics({ onClose }: { onClose: () => void }) {
     <View style={styles.header}><Text style={styles.subheading}>Teste da câmera</Text></View>
     <ScrollView contentContainerStyle={styles.content}>
       <Notice>Diagnóstico de desenvolvimento. Sem login, inventário ou envio. Os resultados ficam apenas nesta tela e são descartados ao sair.</Notice>
-      <Text style={styles.body}>Aponte para uma etiqueta real. O leitor procura apenas PN e NS, usando códigos de barras, o texto impresso e o catálogo SB1. Compare cada caractere com a etiqueta.</Text>
+      <Text style={styles.body}>Aponte para uma etiqueta real. O leitor procura apenas PN e NS, usando códigos de barras, o texto impresso e o catálogo de produtos. Compare cada caractere com a etiqueta.</Text>
       <Button title="Ler etiqueta" onPress={() => setScanning(true)} />
       {unit && <View style={styles.panel}>
         <Text style={styles.subheading}>Última leitura usada</Text>
@@ -60,7 +59,7 @@ export function CameraDiagnostics({ onClose }: { onClose: () => void }) {
       </View>}
       <View style={styles.panel}>
         <Text style={styles.subheading}>Planilhas no celular</Text>
-        <Text style={styles.body}>Gera SB1 e relatório com uma unidade de teste e monta o e-mail, sem enviar. Usa o PN e o NS lidos acima, se houver.</Text>
+        <Text style={styles.body}>Gera a planilha com uma unidade de teste e monta o e-mail, sem enviar. Usa o PN e o NS lidos acima, se houver.</Text>
         <Button title={workbookBusy ? 'Gerando…' : 'Gerar planilhas de teste'} disabled={workbookBusy} onPress={() => {
           setWorkbookBusy(true);
           setWorkbookResult(null);

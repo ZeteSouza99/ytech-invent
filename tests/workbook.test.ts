@@ -3,102 +3,58 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import ExcelJS from 'exceljs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { Inventory, InventoryItem, User } from '../shared/model.ts';
-import { createWorkbookService, type WorkbookService } from '../server/workbook.ts';
+import { YTECH_CNPJ, YTECH_NAME } from '../shared/company.ts';
+import type { Inventory, InventoryItem } from '../shared/model.ts';
+import { formatDateTime, REPORT_COLUMNS, reportFilename } from '../shared/report.ts';
+import { createWorkbookService as createSharedService, type WorkbookService } from '../shared/workbook.ts';
+import { createWorkbookService } from '../server/workbook.ts';
 
-const user: User = { sub: 'verified-server-subject', email: 'operador@ytechsolucoes.com', name: 'Operador verificado' };
 const fixtureDirectory = resolve('tests', `.workbook-fixtures-${randomUUID()}`);
-let originalPath: string;
-let originalBytes: Buffer;
-let originalWorkbook: ExcelJS.Workbook;
-let originalService: WorkbookService;
+const templatePath = resolve('assets', 'catalog', 'sb1-produtos.xlsx');
+let templateBytes: Buffer;
+let service: WorkbookService;
 
-function item(pn: string, ns: string, location = 'MZ01-E01-N01', overrides: Partial<InventoryItem> = {}): InventoryItem {
+function item(pn: string, ns: string, overrides: Partial<InventoryItem> = {}): InventoryItem {
   return {
-    id: randomUUID(), pn, ns, location, quantity: 1, capturedAt: '2026-10-02T14:00:00.000Z',
+    id: randomUUID(), pn, ns, location: 'MZ01-E01-N01', quantity: 1, capturedAt: '2026-10-02T14:00:00.000Z',
     source: 'barcode', rawPn: pn, rawNs: ns, confirmed: true, ...overrides,
   };
 }
 
-function inventory(service: WorkbookService, items: InventoryItem[]): Inventory {
+function inventory(items: InventoryItem[], overrides: Partial<Inventory> = {}): Inventory {
   return {
-    id: randomUUID(), title: 'Conferência', location: 'MZ01-E01-N01',
-    startedAt: '2026-10-02T13:00:00.000Z', completedAt: '2026-10-02T15:00:00.000Z',
-    catalogVersion: service.catalog.version, items,
+    id: randomUUID(), title: 'Cliente Alfa · loja 3', location: 'MZ01-E01-N01',
+    startedAt: '2026-10-02T13:00:00.000Z', completedAt: '2026-10-02T15:00:00.000Z', catalogVersion: 'v1',
+    organization: { kind: 'external', name: 'Cliente Alfa', cnpj: YTECH_CNPJ }, items, ...overrides,
   };
 }
 
-async function load(bytes: Buffer): Promise<ExcelJS.Workbook> {
+async function load(content: Uint8Array): Promise<ExcelJS.Workbook> {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(Uint8Array.from(bytes).buffer);
+  await workbook.xlsx.load(content.slice().buffer);
   return workbook;
 }
 
-async function exported(service: WorkbookService, items: InventoryItem[]) {
-  const result = await service.export(inventory(service, items), user);
-  expect(result.attachments.map(attachment => attachment.filename)).toEqual(['SB1_Produtos.xlsx', 'Inventario_Ytech.xlsx']);
-  expect(result.attachments.every(attachment => Buffer.isBuffer(attachment.content))).toBe(true);
-  return {
-    ...result,
-    sb1: await load(result.attachments[0]!.content),
-    report: await load(result.attachments[1]!.content),
-  };
+function values(sheet: ExcelJS.Worksheet, number: number): unknown[] {
+  return Array.from({ length: sheet.columnCount }, (_, index) => sheet.getRow(number).getCell(index + 1).value);
 }
 
-function rowSnapshot(row: ExcelJS.Row, columns = 31) {
-  return {
-    height: row.height,
-    hidden: row.hidden,
-    outlineLevel: row.outlineLevel,
-    cells: Array.from({ length: columns }, (_, index) => {
-      const cell = row.getCell(index + 1);
-      return { value: cell.value, style: cell.style, note: cell.note, dataValidation: cell.dataValidation };
-    }),
-  };
-}
-
-function sheetSnapshot(sheet: ExcelJS.Worksheet) {
-  return {
-    merges: sheet.model.merges,
-    columns: sheet.columns.map(column => ({ width: column.width, hidden: column.hidden, style: column.style })),
-    rows: Array.from({ length: sheet.rowCount }, (_, index) => rowSnapshot(sheet.getRow(index + 1), sheet.columnCount)),
-  };
-}
-
-async function fixture(rows: Array<{ pn: ExcelJS.CellValue; code?: ExcelJS.CellValue; description?: string }>): Promise<{
-  path: string; service: WorkbookService; workbook: ExcelJS.Workbook;
-}> {
-  const workbook = await load(originalBytes);
+async function catalogFile(rows: Array<{ pn: ExcelJS.CellValue; code?: string; description?: string }>, change?: (workbook: ExcelJS.Workbook) => void) {
+  const workbook = await load(templateBytes);
   const products = workbook.getWorksheet('Produtos')!;
   for (let number = products.rowCount; number >= 4; number -= 1) products.spliceRows(number, 1);
   for (const [index, entry] of rows.entries()) {
-    const row = products.addRow([
-      entry.code ?? `COD${index}`, entry.pn, entry.description ?? `Produto ${index}`,
-      'PA', 'UND', '01', '0001', 'N', 'S', '01234567', 0,
-    ]);
-    row.getCell(2).numFmt = '@';
-    row.getCell(29).value = 5;
-    row.getCell(30).value = 10;
-    row.getCell(31).value = 15;
-    row.height = 29 + index;
-    row.getCell(3).font = { name: 'Arial', size: 12, bold: true };
-    row.getCell(29).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } };
-    row.getCell(31).numFmt = '0.00';
-    row.getCell(31).border = { bottom: { style: 'thin', color: { argb: 'FFFF0000' } } };
+    products.addRow([entry.code ?? `COD${index}`, entry.pn, entry.description ?? `Produto ${index}`]);
   }
-  workbook.getWorksheet('Grupos')!.getCell('A4').value = '0001';
+  change?.(workbook);
   const path = join(fixtureDirectory, `${randomUUID()}.xlsx`);
-  const bytes = Buffer.from(await workbook.xlsx.writeBuffer());
-  await writeFile(path, bytes);
-  return { path, service: await createWorkbookService(path), workbook: await load(bytes) };
+  await writeFile(path, Buffer.from(await workbook.xlsx.writeBuffer()));
+  return path;
 }
 
 beforeAll(async () => {
-  // The versioned template; mail.test.ts checks locally that it matches the original spreadsheet byte for byte.
-  originalPath = resolve('assets', 'catalog', 'sb1-produtos.xlsx');
-  originalBytes = await readFile(originalPath);
-  originalWorkbook = await load(originalBytes);
-  originalService = await createWorkbookService(originalPath);
+  templateBytes = await readFile(templatePath);
+  service = await createSharedService(new Uint8Array(templateBytes), 'v1');
   await mkdir(fixtureDirectory, { recursive: true });
 });
 
@@ -106,209 +62,139 @@ afterAll(async () => {
   await rm(fixtureDirectory, { recursive: true, force: true });
 });
 
-describe('catálogo do XLSX original', () => {
-  it('usa SHA256 dos bytes e preserva o catálogo completo, inclusive as últimas linhas', () => {
-    expect(originalService.catalog.version).toBe(createHash('sha256').update(originalBytes).digest('hex'));
-    expect(originalService.catalog.products.find(product => product.pn === 'EC300K-1SA2AA6')).toMatchObject({
-      code: '835884',
+describe('catálogo de produtos', () => {
+  it('lê PN, código e descrição do modelo original e usa o SHA-256 dos bytes como versão', async () => {
+    const server = await createWorkbookService(templatePath);
+    expect(server.catalog.version).toBe(createHash('sha256').update(templateBytes).digest('hex'));
+    expect(server.catalog.products.find(product => product.pn === 'EC300K-1SA2AA6')).toEqual({
+      pn: 'EC300K-1SA2AA6', code: '835884',
       description: 'COLETOR DE DADOS EC30 LAN, GMS, LEITOR 2D SE2100, 4GB/32GB, 1-PACK',
     });
-    expect(originalService.catalog.products.some(product => product.pn === 'BR03600BK11045')).toBe(true);
-    expect(originalService.catalog.locations).toEqual([
-      'MZ01-E01-N01', 'MZ01-E01-N02', 'MZ01-E01-N03', 'MZ01-E02-N01', 'MZ01-E02-N02',
-      'MZ01-E02-N03', 'MZ01-E03-N01', 'MZ01-E03-N02', 'MZ01-E03-N03',
+    expect(server.catalog.products.some(product => product.pn === 'BR03600BK11045')).toBe(true);
+    expect(server.catalog.locations).toContain('MZ01-E01-N01');
+    // Field rules of the TOTVS import no longer apply: the catalog only feeds recognition and descriptions.
+    expect(server.catalog.warnings.join('\n')).not.toMatch(/B1_LOCPAD|B1_POSIPI|B1_GRUPO/);
+  });
+
+  it('PN repetido com descrições diferentes fica sem descrição e gera aviso; descrições iguais são mantidas', async () => {
+    const path = await catalogFile([
+      { pn: 'DUP', description: 'Um' }, { pn: ' dup ', description: 'Outro' },
+      { pn: 'SAME', description: 'Igual' }, { pn: 'SAME', description: 'Igual' }, { pn: 'OK', description: 'Produto OK' },
     ]);
-    expect(originalService.catalog.warnings.some(warning => warning.includes('B1_LOCPAD obrigatório vazio'))).toBe(true);
-    expect(originalService.catalog.warnings.some(warning => warning.includes('não corresponde exatamente'))).toBe(true);
+    const { catalog } = await createWorkbookService(path);
+    expect(catalog.products.find(product => product.pn === 'DUP')).toMatchObject({ description: '' });
+    expect(catalog.products.find(product => product.pn === 'SAME')).toMatchObject({ description: 'Igual' });
+    expect(catalog.products.filter(product => product.pn === 'SAME')).toHaveLength(1);
+    expect(catalog.warnings).toHaveLength(1);
+    expect(catalog.warnings[0]).toContain('PN DUP');
   });
 
-  it('mantém cabeçalhos, merge, estilos, colunas e abas auxiliares; exporta um produto por PN', async () => {
-    const result = await exported(originalService, [
-      item('EC300K-1SA2AA6', '000001'), item('EC300K-1SA2AA6', '000002'), item('BR03600BK11045', '000003'),
-    ]);
-    expect(result.sb1.worksheets.map(sheet => sheet.name)).toEqual(['Produtos', 'Grupos', 'Endereço']);
-    const source = originalWorkbook.getWorksheet('Produtos')!;
-    const sheet = result.sb1.getWorksheet('Produtos')!;
-    expect(sheet.actualRowCount).toBe(5);
-    expect(sheet.model.merges).toEqual(source.model.merges);
-    expect(sheet.columns.map(column => column.width)).toEqual(source.columns.map(column => column.width));
-    for (const number of [1, 2, 3]) expect(rowSnapshot(sheet.getRow(number))).toEqual(rowSnapshot(source.getRow(number)));
-    expect(rowSnapshot(sheet.getRow(4))).toEqual(rowSnapshot(source.getRow(4)));
-    expect(rowSnapshot(sheet.getRow(5))).toEqual(rowSnapshot(source.getRow(254)));
-    expect(sheet.getCell('F4').value).toBeNull();
-    expect(sheet.getCell('G4').value).toBe('001');
-    expect(['AC4', 'AD4', 'AE4'].map(address => sheet.getCell(address).value)).toEqual([5, 10, 15]);
-    for (const name of ['Grupos', 'Endereço']) {
-      expect(sheetSnapshot(result.sb1.getWorksheet(name)!)).toEqual(sheetSnapshot(originalWorkbook.getWorksheet(name)!));
-    }
-    expect(await readFile(originalPath)).toEqual(originalBytes);
-    expect(result.warnings.some(warning => warning.includes('Revisão obrigatória'))).toBe(true);
+  it('lê zeros de uma máscara numérica explícita e aceita catálogo sem a aba de endereços', async () => {
+    const path = await catalogFile([{ pn: 12 }], workbook => {
+      workbook.getWorksheet('Produtos')!.getCell('B4').numFmt = '000000';
+      workbook.removeWorksheet(workbook.getWorksheet('Endereço')!.id);
+      workbook.removeWorksheet(workbook.getWorksheet('Grupos')!.id);
+    });
+    const { catalog } = await createWorkbookService(path);
+    expect(catalog.products[0]!.pn).toBe('000012');
+    expect(catalog.locations).toEqual([]);
   });
 
-  it('registra uma unidade por serial e agrega a quantidade real por PN e localização', async () => {
-    const result = await exported(originalService, [
-      item('EC300K-1SA2AA6', '000001'),
-      item('EC300K-1SA2AA6', '000002', 'MZ01-E01-N01', { source: 'ocr', rawPn: 'PN: EC300K-1SA2AA6', rawNs: 'NS: 000002' }),
-      item('EC300K-1SA2AA6', '000003', 'MZ01-E01-N02'),
-    ]);
-    const details = result.report.getWorksheet('Inventário')!;
-    expect(details.actualRowCount).toBe(4);
-    expect([2, 3, 4].map(number => details.getCell(number, 3).value)).toEqual([1, 1, 1]);
-    expect(details.getCell('B2').value).toBe('000001');
-    expect(details.getCell('G2').value).toBe(user.email);
-    expect(details.getCell('H2').value).toBe('2026-10-02T14:00:00.000Z');
-    expect(details.getCell('I3').value).toBe('ocr');
-    expect(details.getCell('J3').value).toBe('PN: EC300K-1SA2AA6');
-    expect(details.getCell('K3').value).toBe('NS: 000002');
-    expect(details.getCell('L2').text).toContain('B1_LOCPAD');
-    expect(details.getCell('L2').fill).toMatchObject({ fgColor: { argb: 'FFFFE699' } });
-    const summary = result.report.getWorksheet('Resumo')!;
-    expect(summary.actualRowCount).toBe(3);
-    expect([summary.getCell('C2').value, summary.getCell('C3').value]).toEqual([2, 1]);
-    expect([summary.getCell('B2').value, summary.getCell('B3').value]).toEqual(['MZ01-E01-N01', 'MZ01-E01-N02']);
-    expect(result.report.getWorksheet('Pendências')!.actualRowCount).toBeGreaterThan(1);
-  });
-});
-
-describe('catálogos e leituras artificiais', () => {
-  it('exclui PN desconhecido e PN ambíguo sem escolher a primeira linha', async () => {
-    const { service } = await fixture([{ pn: 'DUP', code: 'A' }, { pn: ' dup ', code: 'B' }, { pn: 'OK' }]);
-    expect(service.catalog.products.filter(product => product.pn === 'DUP')).toHaveLength(1);
-    expect(service.catalog.products.find(product => product.pn === 'DUP')).toMatchObject({ code: '', description: '' });
-    expect(service.catalog.products.find(product => product.pn === 'DUP')!.issues.join()).toContain('ambíguo');
-    const result = await exported(service, [item('DUP', '001'), item('UNKNOWN', '002'), item('OK', '003')]);
-    const sb1 = result.sb1.getWorksheet('Produtos')!;
-    expect(sb1.actualRowCount).toBe(4);
-    expect(sb1.getCell('B4').value).toBe('OK');
-    const details = result.report.getWorksheet('Inventário')!;
-    expect(details.getCell('E2').value).toBe('');
-    expect(details.getCell('E3').value).toBe('');
-    expect(details.getCell('L2').text).toContain('ambíguo');
-    expect(details.getCell('L3').text).toContain('desconhecido');
-    expect(result.report.getWorksheet('Resumo')!.actualRowCount).toBe(4);
-    const issueText = result.report.getWorksheet('Pendências')!.getColumn(4).values.join('\n');
-    expect(issueText).toContain('ambíguo');
-    expect(issueText).toContain('desconhecido');
-  });
-
-  it('gera SB1 somente com cabeçalhos quando nenhum PN pode ser exportado', async () => {
-    const { service } = await fixture([{ pn: 'DUP' }, { pn: 'DUP' }]);
-    const result = await exported(service, [item('DUP', '001'), item('UNKNOWN', '002')]);
-    expect(result.sb1.getWorksheet('Produtos')!.actualRowCount).toBe(3);
-    expect(result.sb1.getWorksheet('Produtos')!.model.merges).toEqual(['A1:AE1']);
-    expect(result.report.getWorksheet('Inventário')!.actualRowCount).toBe(3);
-  });
-
-  it('preserva zeros, textos iniciados com =, campos distantes e estilos da linha selecionada', async () => {
-    const { service, workbook } = await fixture([{ pn: 'IGNORED' }, { pn: '000012' }, { pn: '=1+1' }]);
-    const result = await exported(service, [
-      item('000012', '000099'), item('=1+1', '=2+2', 'MZ01-E01-N01', { rawPn: '=SUM(1,1)', rawNs: '=HYPERLINK("x")' }),
-    ]);
-    const sb1 = result.sb1.getWorksheet('Produtos')!;
-    expect(rowSnapshot(sb1.getRow(4))).toEqual(rowSnapshot(workbook.getWorksheet('Produtos')!.getRow(5)));
-    expect(sb1.getCell('B4').value).toBe('000012');
-    expect(sb1.getCell('B5').value).toBe('=1+1');
-    expect(sb1.getCell('B5').type).toBe(ExcelJS.ValueType.String);
-    expect(sb1.getCell('B5').numFmt).toBe('@');
-    const details = result.report.getWorksheet('Inventário')!;
-    for (const address of ['A2', 'B2', 'A3', 'B3', 'J3', 'K3']) {
-      expect(details.getCell(address).type).toBe(ExcelJS.ValueType.String);
-      expect(details.getCell(address).numFmt).toBe('@');
-    }
-    expect(details.getCell('A2').value).toBe('000012');
-    expect(details.getCell('B2').value).toBe('000099');
-    expect(details.getCell('J3').value).toBe('=SUM(1,1)');
-    expect(details.getCell('K3').value).toBe('=HYPERLINK("x")');
-    expect(result.warnings).toEqual([]);
-  });
-
-  it('lê zeros de uma máscara numérica explícita sem inventar zeros nos demais códigos', async () => {
-    const { path, workbook } = await fixture([{ pn: 12 }]);
-    workbook.getWorksheet('Produtos')!.getCell('B4').numFmt = '000000';
-    await writeFile(path, Buffer.from(await workbook.xlsx.writeBuffer()));
-    const service = await createWorkbookService(path);
-    expect(service.catalog.products[0]!.pn).toBe('000012');
-    const result = await exported(service, [item('000012', '000005')]);
-    expect(result.sb1.getWorksheet('Produtos')!.getCell('B4').value).toBe('000012');
-    expect(result.sb1.getWorksheet('Produtos')!.getCell('B4').type).toBe(ExcelJS.ValueType.String);
-  });
-
-  it('relata todos os obrigatórios ausentes sem preencher nenhum valor e aceita origem zero', async () => {
-    const { path, workbook } = await fixture([{ pn: 'EMPTY', code: '' }]);
-    const sheet = workbook.getWorksheet('Produtos')!;
-    for (const column of [3, 4, 5, 6, 10, 11]) sheet.getCell(4, column).value = null;
-    await writeFile(path, Buffer.from(await workbook.xlsx.writeBuffer()));
-    const service = await createWorkbookService(path);
-    const issues = service.catalog.products[0]!.issues.join('\n');
-    for (const name of ['B1_COD', 'B1_DESC', 'B1_TIPO', 'B1_UM', 'B1_LOCPAD', 'B1_POSIPI', 'B1_ORIGEM']) {
-      expect(issues).toContain(`${name} obrigatório vazio`);
-    }
-    const result = await exported(service, [item('EMPTY', '001')]);
-    for (const column of [3, 4, 5, 6, 10, 11]) expect(result.sb1.getWorksheet('Produtos')!.getCell(4, column).value).toBeNull();
-    const valid = await fixture([{ pn: 'VALID' }]);
-    expect(valid.service.catalog.products[0]!.issues).toEqual([]);
-  });
-
-  it('valida tamanho da descrição, NCM, armazém, grupos e códigos repetidos sem corrigir', async () => {
-    const { path, workbook } = await fixture([{ pn: 'BAD', code: 'SAME', description: 'D'.repeat(81) }, { pn: 'OTHER', code: 'SAME' }]);
-    const sheet = workbook.getWorksheet('Produtos')!;
-    sheet.getCell('F4').value = 'MZ01';
-    sheet.getCell('G4').value = '001';
-    sheet.getCell('J4').value = '123.456789';
-    await writeFile(path, Buffer.from(await workbook.xlsx.writeBuffer()));
-    const service = await createWorkbookService(path);
-    const issues = service.catalog.products[0]!.issues.join('\n');
-    for (const text of ['80 caracteres', 'até 8 dígitos', 'armazém de 2 dígitos', '4 dígitos', 'não corresponde exatamente', 'B1_COD repetido']) {
-      expect(issues).toContain(text);
-    }
-    const result = await exported(service, [item('BAD', '001', 'LOCAL NOVO')]);
-    const out = result.sb1.getWorksheet('Produtos')!;
-    for (const address of ['A4', 'C4', 'F4', 'G4', 'J4']) expect(out.getCell(address).value).toEqual(sheet.getCell(address).value);
-    expect(result.warnings.join('\n')).toContain('Localização não consta');
-  });
-
-  it('isola exportações concorrentes e ignora modificações no catálogo público', async () => {
-    const { service, path } = await fixture([{ pn: 'ONE' }, { pn: 'TWO' }]);
-    const bytes = await readFile(path);
-    service.catalog.products[0]!.code = 'ALTERADO';
-    const [first, second] = await Promise.all([exported(service, [item('ONE', '001')]), exported(service, [item('TWO', '002')])]);
-    expect(first.sb1.getWorksheet('Produtos')!.getCell('B4').value).toBe('ONE');
-    expect(second.sb1.getWorksheet('Produtos')!.getCell('B4').value).toBe('TWO');
-    expect(first.report.getWorksheet('Inventário')!.getCell('E2').value).toBe('COD0');
-    expect(await readFile(path)).toEqual(bytes);
-  });
-
-  it('reavalia uma fila offline de catálogo antigo sem descartar nem alterar as leituras', async () => {
-    const { service } = await fixture([{ pn: 'CURRENT', code: 'ATUAL' }]);
-    const pending = { ...inventory(service, [item('CURRENT', '0001'), item('REMOVED', '0002')]), catalogVersion: 'versao-anterior' };
-    const before = structuredClone(pending);
-    const result = await service.export(pending, user);
-    expect(pending).toEqual(before);
-    expect(result.warnings.join('\n')).toContain('A versão do catálogo mudou');
-    expect(result.warnings.join('\n')).toContain('PN REMOVED');
-    const sb1 = await load(result.attachments[0]!.content);
-    expect(sb1.getWorksheet('Produtos')!.actualRowCount).toBe(4);
-    expect(sb1.getWorksheet('Produtos')!.getCell('A4').value).toBe('ATUAL');
-    const report = await load(result.attachments[1]!.content);
-    expect(report.getWorksheet('Inventário')!.actualRowCount).toBe(3);
-    expect(report.getWorksheet('Inventário')!.getCell('A3').value).toBe('REMOVED');
-    expect(report.getWorksheet('Inventário')!.getCell('B3').value).toBe('0002');
-    expect(report.getWorksheet('Resumo')!.actualRowCount).toBe(3);
-    expect(report.getWorksheet('Pendências')!.getColumn(4).values.join('\n')).toContain('A versão do catálogo mudou');
-  });
-
-  it('falha explicitamente para arquivo ausente, corrompido, abas ou cabeçalhos inválidos', async () => {
+  it('falha explicitamente para arquivo ausente, corrompido, sem a aba Produtos ou com cabeçalho trocado', async () => {
     await expect(createWorkbookService(join(fixtureDirectory, 'missing.xlsx'))).rejects.toThrow('Não foi possível ler');
     const invalidPath = join(fixtureDirectory, 'invalid.xlsx');
     await writeFile(invalidPath, 'not an XLSX');
     await expect(createWorkbookService(invalidPath)).rejects.toThrow('não é um XLSX legível');
-    const { path, workbook } = await fixture([{ pn: 'VALID' }]);
-    workbook.getWorksheet('Produtos')!.getCell('B2').value = 'B1_ERRADO';
-    await writeFile(path, Buffer.from(await workbook.xlsx.writeBuffer()));
-    await expect(createWorkbookService(path)).rejects.toThrow('cabeçalho Produtos!B2');
-    workbook.getWorksheet('Produtos')!.getCell('B2').value = 'B1_XPART';
-    workbook.removeWorksheet('Endereço');
-    await writeFile(path, Buffer.from(await workbook.xlsx.writeBuffer()));
-    await expect(createWorkbookService(path)).rejects.toThrow('aba "Endereço" ausente');
+    const wrongHeader = await catalogFile([{ pn: 'VALID' }], workbook => { workbook.getWorksheet('Produtos')!.getCell('B2').value = 'B1_ERRADO'; });
+    await expect(createWorkbookService(wrongHeader)).rejects.toThrow('cabeçalho Produtos!B2');
+    const noProducts = await catalogFile([{ pn: 'VALID' }], workbook => { workbook.getWorksheet('Produtos')!.name = 'Itens'; });
+    await expect(createWorkbookService(noProducts)).rejects.toThrow('aba "Produtos" ausente');
+    const empty = await catalogFile([]);
+    await expect(createWorkbookService(empty)).rejects.toThrow('nenhum produto');
+  });
+});
+
+describe('planilha simples', () => {
+  it('uma linha por unidade com todas as colunas, na ordem da leitura, e quantidade por PN com total', async () => {
+    const data = inventory([
+      item('EC300K-1SA2AA6', '000002', { capturedAt: '2026-10-02T14:05:00.000Z', patrimony: 'PAT-7', location: 'MZ01-E01-N02' }),
+      item('EC300K-1SA2AA6', '000001'),
+      item('FORA-DO-CATALOGO', '000003', { capturedAt: '2026-10-02T14:10:00.000Z' }),
+    ]);
+    const file = await service.spreadsheet([{ inventory: data, partial: false }]);
+    expect(file.filename).toBe(`Inventario_${YTECH_CNPJ}.xlsx`);
+    expect(file.mimeType).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    const workbook = await load(file.content);
+    expect(workbook.worksheets.map(sheet => sheet.name)).toEqual(['Inventário', 'Resumo']);
+    const units = workbook.getWorksheet('Inventário')!;
+    expect(values(units, 1)).toEqual([...REPORT_COLUMNS]);
+    expect(units.rowCount).toBe(4);
+    const description = 'COLETOR DE DADOS EC30 LAN, GMS, LEITOR 2D SE2100, 4GB/32GB, 1-PACK';
+    expect(values(units, 2).slice(0, 9)).toEqual(['Cliente Alfa', '09.310.663/0001-87', 'Cliente Alfa · loja 3', 'EC300K-1SA2AA6', description, '000001', 1, null, 'MZ01-E01-N01']);
+    expect(values(units, 3).slice(3, 9)).toEqual(['EC300K-1SA2AA6', description, '000002', 1, 'PAT-7', 'MZ01-E01-N02']);
+    expect(values(units, 4).slice(3, 7)).toEqual(['FORA-DO-CATALOGO', null, '000003', 1]);
+    const read = units.getCell('J2');
+    expect(read.numFmt).toBe('dd/mm/yyyy hh:mm');
+    const shown = read.value as Date;
+    const pad = (value: number) => String(value).padStart(2, '0');
+    expect(`${pad(shown.getUTCDate())}/${pad(shown.getUTCMonth() + 1)}/${shown.getUTCFullYear()} ${pad(shown.getUTCHours())}:${pad(shown.getUTCMinutes())}`)
+      .toBe(formatDateTime('2026-10-02T14:00:00.000Z'));
+    expect(units.autoFilter).toBeTruthy();
+
+    const summary = workbook.getWorksheet('Resumo')!;
+    expect(values(summary, 1)).toEqual(['Inventário', 'Empresa', 'PN', 'Descrição', 'Quantidade']);
+    expect(values(summary, 2)).toEqual(['Cliente Alfa · loja 3', 'Cliente Alfa', 'EC300K-1SA2AA6', description, 2]);
+    expect(values(summary, 3)).toEqual(['Cliente Alfa · loja 3', 'Cliente Alfa', 'FORA-DO-CATALOGO', null, 1]);
+    expect(values(summary, 4)).toEqual(['Total', null, null, null, 3]);
+  });
+
+  it('mantém zeros à esquerda e textos iniciados por = como texto, nunca como número ou fórmula', async () => {
+    const data = inventory([item('=1+1', '000099', { patrimony: '0004' })]);
+    const units = (await load((await service.spreadsheet([{ inventory: data, partial: false }])).content)).getWorksheet('Inventário')!;
+    for (const address of ['D2', 'F2', 'H2']) {
+      expect(units.getCell(address).type, address).toBe(ExcelJS.ValueType.String);
+      expect(units.getCell(address).numFmt, address).toBe('@');
+    }
+    expect([units.getCell('D2').value, units.getCell('F2').value, units.getCell('H2').value]).toEqual(['=1+1', '000099', '0004']);
+  });
+
+  it('reúne vários inventários na mesma planilha, identificando cada um, e marca cópia parcial no nome', async () => {
+    const first = inventory([item('EC300K-1SA2AA6', 'A1'), item('EC300K-1SA2AA6', 'A2')]);
+    const second = inventory([item('EC300K-1SA2AA6', 'B1')], {
+      title: 'Estoque Ytech', organization: { kind: 'internal', name: YTECH_NAME, cnpj: YTECH_CNPJ },
+    });
+    const file = await service.spreadsheet([{ inventory: first, partial: false }, { inventory: second, partial: true }]);
+    expect(file.filename).toBe('Inventario_PARCIAL_todos.xlsx');
+    const workbook = await load(file.content);
+    const units = workbook.getWorksheet('Inventário')!;
+    expect(units.rowCount).toBe(4);
+    expect(units.getCell('C4').value).toBe('Estoque Ytech');
+    expect(units.getCell('A4').value).toBe(YTECH_NAME);
+    const summary = workbook.getWorksheet('Resumo')!;
+    expect([2, 3].map(number => [summary.getCell(number, 1).value, summary.getCell(number, 5).value])).toEqual([['Cliente Alfa · loja 3', 2], ['Estoque Ytech', 1]]);
+    expect(summary.getCell('E4').value).toBe(3);
+    expect(reportFilename([{ inventory: second, partial: false }], 'pdf')).toBe(`Inventario_${YTECH_CNPJ}.pdf`);
+    const withoutCompany = inventory([item('X-1', 'N1')], { organization: undefined });
+    expect(reportFilename([{ inventory: withoutCompany, partial: false }], 'csv')).toBe(`Inventario_${withoutCompany.id}.csv`);
+  });
+
+  it('o servidor envia a mesma planilha simples como anexo', async () => {
+    const server = await createWorkbookService(templatePath);
+    const data = inventory([item('EC300K-1SA2AA6', '000001')]);
+    const result = await server.export(data, { sub: '1', email: 'a@ytechsolucoes.com', name: 'A' });
+    expect(result.warnings).toEqual([]);
+    expect(result.attachments.map(file => file.filename)).toEqual([`Inventario_${YTECH_CNPJ}.xlsx`]);
+    expect(Buffer.isBuffer(result.attachments[0]!.content)).toBe(true);
+    expect((await load(result.attachments[0]!.content)).getWorksheet('Inventário')!.getCell('F2').value).toBe('000001');
+  });
+
+  it('não altera o arquivo do catálogo nem é afetada por mudanças no catálogo público', async () => {
+    const path = await catalogFile([{ pn: 'ONE', description: 'Produto um' }]);
+    const bytes = await readFile(path);
+    const own = await createSharedService(new Uint8Array(bytes), 'v1');
+    own.catalog.products[0]!.description = 'ALTERADO';
+    const units = (await load((await own.spreadsheet([{ inventory: inventory([item('ONE', '1')]), partial: false }])).content)).getWorksheet('Inventário')!;
+    expect(units.getCell('E2').value).toBe('Produto um');
+    expect(await readFile(path)).toEqual(bytes);
   });
 });

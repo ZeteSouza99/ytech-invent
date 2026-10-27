@@ -304,8 +304,7 @@ describe('API HTTP com SQLite e dependências externas injetadas', () => {
       inventory: data,
       user,
       attachments: [
-        expect.objectContaining({ filename: 'SB1_Produtos.xlsx', content: expect.any(Buffer) }),
-        expect.objectContaining({ filename: 'Inventario_Ytech.xlsx', content: expect.any(Buffer) }),
+        expect.objectContaining({ filename: `Inventario_${data.id}.xlsx`, content: expect.any(Buffer) }),
       ],
     }));
     expect(app.store.get(data.id, user.sub).inventory).toEqual(data);

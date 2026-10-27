@@ -241,6 +241,14 @@ export class InventoryRepository {
     return rows.map(readStoredItem);
   }
 
+  // Every part number this account has saved on this device; unreadable rows are skipped, not fatal.
+  async partNumbers(owner: string): Promise<string[]> {
+    const rows = await this.db.getAllAsync<{ pn: unknown }>(
+      `SELECT DISTINCT CASE WHEN json_valid(items.json) THEN json_extract(items.json, '$.pn') END AS pn
+       FROM items JOIN inventories ON inventories.id = items.inventoryId WHERE inventories.owner = ?`, owner);
+    return rows.map(row => row.pn).filter((pn): pn is string => typeof pn === 'string' && pn.length > 0);
+  }
+
   add(owner: string, id: string, input: InventoryItem): Promise<InventoryItem> {
     return this.serialize(async () => {
       const draft = await this.get(owner, id);

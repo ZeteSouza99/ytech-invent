@@ -44,7 +44,7 @@ export function InventoryScreen({
           {invalidIdentification && <Notice>A identificação salva contém caracteres inválidos. Edite-a antes de concluir; suas leituras estão preservadas.</Notice>}
           <Button title="Editar identificação" secondary disabled={busy} onPress={onEditIdentification} />
         </>}
-        {!!pendingProducts && <Notice>{pendingProducts} PN fora do catálogo. Eles constarão no inventário como pendências, não no arquivo SB1.</Notice>}
+        {!!pendingProducts && <Notice>{pendingProducts} PN fora do catálogo. Entram normalmente no relatório, sem descrição.</Notice>}
         {!!inventory.lastError && <Notice error>{inventory.lastError}</Notice>}
         {!!inventory.receipt && !receipt && <Notice error>O comprovante local não pôde ser lido. Confira a pasta Enviados antes de repetir qualquer envio; as unidades continuam salvas.</Notice>}
         {receipt && <Notice>{receipt.message}{'\n'}{receipt.warnings.slice(0, 6).join('\n')}{receipt.warnings.length > 6 ? `\nMais ${receipt.warnings.length - 6} avisos no relatório.` : ''}</Notice>}
@@ -64,7 +64,7 @@ export function InventoryScreen({
         <Text selectable style={styles.code}>NS {item.ns}</Text>
         {!!item.patrimony && <Text selectable style={styles.body}>Patrimônio: {item.patrimony}</Text>}
         <Text style={styles.body}>{item.location} · 1 unidade</Text>
-        {!knownPns.has(item.pn) && <Text style={{ color: colors.amber }}>PN pendente de cadastro</Text>}
+        {!knownPns.has(item.pn) && <Text style={{ color: colors.amber }}>PN fora do catálogo</Text>}
         {draft && <View style={styles.row}>
           <View style={{ flex: 1 }}><Button title="Editar unidade" secondary disabled={busy} onPress={() => onEditItem(item)} /></View>
           <View style={{ flex: 1 }}><Button title="Remover leitura" secondary disabled={busy} onPress={() => onRemoveItem(item)} /></View>

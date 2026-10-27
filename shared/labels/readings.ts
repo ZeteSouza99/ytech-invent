@@ -17,6 +17,9 @@ function confidenceOf(field: LabelField, evidence: readonly Evidence[], strongCa
   const has = (item: Evidence) => evidence.includes(item);
   if (has('fixado')) return 'alta';
   if (field === 'pn') {
+    // A part number already counted needs no second photo: its barcode, a labeled text or a distinctive text,
+    // even one OCR character off ('catalogo-aproximado' after "P/N"), is the same part number.
+    if (has('historico') && (has('codigo') || has('rotulo') || strongCatalog)) return 'alta';
     if (has('codigo') && (has('identificador') || has('rotulo') || (has('catalogo') && strongCatalog))) return 'alta';
     if (has('texto') && has('catalogo') && (has('rotulo') || strongCatalog)) return 'alta';
     if (has('texto') && has('rotulo') && has('catalogo-aproximado')) return 'media';
@@ -37,7 +40,7 @@ export function makeReading(
 ): Reading | null {
   const parsed = (field === 'pn' ? partNumberSchema : codeSchema).safeParse(value);
   if (!parsed.success) return null;
-  const unique = [...new Set(evidence)];
+  const unique = [...new Set([...evidence, ...(field === 'pn' && catalog.seen(parsed.data) ? ['historico' as const] : [])])];
   const confidence = confidenceOf(field, unique, field === 'pn' && catalog.strong(parsed.data));
   return { field, value: parsed.data, raw: raw.slice(0, 2048), source, evidence: unique, confidence, ...(box ? { box } : {}) };
 }

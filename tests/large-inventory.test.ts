@@ -7,6 +7,7 @@ import { InventoryRepository, type LocalDatabase } from '../src/repository';
 import { inventoriesCsv, inventoriesHtml, inventoriesJson, parseInventoryBackup } from '../src/exportFormats';
 import { buildInventoryMessage } from '../shared/mime';
 import { MAX_ITEMS, type InventoryItem } from '../shared/model';
+import { describeFrom } from '../shared/report';
 import { createWorkbookService } from '../shared/workbook';
 
 // Gmail accepts up to 25 MB of attachments per message; the base64 message must stay below it.
@@ -62,17 +63,20 @@ describe('coleta no limite de 10.000 unidades', () => {
       const inventory = await repository.payload(user.sub, id);
       expect(inventory.items).toHaveLength(MAX_ITEMS);
 
-      const { attachments, warnings } = await service.export(inventory, user);
-      const report = new ExcelJS.Workbook();
-      await report.xlsx.load(attachments.find(file => file.filename === 'Inventario_Ytech.xlsx')!.content.slice().buffer);
-      expect(report.getWorksheet('Inventário')!.rowCount).toBe(MAX_ITEMS + 1);
-
       const entries = [{ inventory, partial: false }];
-      expect(inventoriesHtml(entries).match(/<tr>/g)).toHaveLength(MAX_ITEMS + 1);
-      expect(inventoriesCsv(entries).split('\r\n')).toHaveLength(MAX_ITEMS + 1);
+      const spreadsheet = await service.spreadsheet(entries);
+      const report = new ExcelJS.Workbook();
+      await report.xlsx.load(spreadsheet.content.slice().buffer);
+      expect(report.getWorksheet('Inventário')!.rowCount).toBe(MAX_ITEMS + 1);
+      const summary = report.getWorksheet('Resumo')!;
+      expect(summary.getCell(summary.rowCount, 5).value).toBe(MAX_ITEMS);
+
+      const describe = describeFrom(service.catalog.products);
+      expect(inventoriesHtml(entries, describe).match(/<tr class="u">/g)).toHaveLength(MAX_ITEMS);
+      expect(inventoriesCsv(entries, describe).split('\r\n')).toHaveLength(MAX_ITEMS + 1);
       expect(parseInventoryBackup(inventoriesJson(entries))[0]!.inventory.items).toHaveLength(MAX_ITEMS);
 
-      const raw = buildInventoryMessage({ inventory, user, warnings, attachments });
+      const raw = buildInventoryMessage({ inventory, user, attachments: [spreadsheet] });
       expect(raw.length).toBeLessThan(GMAIL_LIMIT_BYTES);
     } finally { sqlite.close(); }
   }, 180_000);

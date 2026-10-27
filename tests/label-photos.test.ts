@@ -33,6 +33,7 @@ const TRUTH: Record<string, { pn: string[]; ns: string[] }> = {
 let photos: Map<string, Photo>;
 let rotated: Map<string, Photo>;
 let catalog: CatalogIndex;
+let catalogPns: string[];
 
 async function load(path: string): Promise<Map<string, Photo>> {
   const list = JSON.parse(await readFile(path, 'utf8')) as Photo[];
@@ -43,15 +44,16 @@ beforeAll(async () => {
   photos = await load('tests/fixtures/label-photos.json');
   rotated = await load('tests/fixtures/label-photos-rotated.json');
   const service = await createWorkbookService(new Uint8Array(await readFile('assets/catalog/sb1-produtos.xlsx')), 'fotos');
-  catalog = createCatalogIndex(service.catalog.products.map(product => product.pn));
+  catalogPns = service.catalog.products.map(product => product.pn);
+  catalog = createCatalogIndex(catalogPns);
 });
 
-function decideAfter(file: string, frames: number, savedSerials: ReadonlySet<string> = new Set(), set = photos): Decision {
+function decideAfter(file: string, frames: number, savedSerials: ReadonlySet<string> = new Set(), set = photos, index = catalog): Decision {
   const photo = set.get(file)!;
   const pool = new ReadingPool();
   let decision: Decision | undefined;
   for (let frame = 0; frame < frames; frame += 1) {
-    pool.addFrame(analyzeLabel(photo, catalog));
+    pool.addFrame(analyzeLabel(photo, index));
     decision = pool.decide({ savedSerials });
   }
   return decision!;
@@ -149,5 +151,54 @@ describe('fotos reais das etiquetas', () => {
     expect(decideAfter('09.00.31.jpeg', 3)).toMatchObject({ status: 'searching', ns: { value: '13317000503377' } });
     expect(decideAfter('09.001.40.jpeg', 3)).toMatchObject({ status: 'searching', pn: { value: 'ET40AB-001C1B0-A6' } });
     expect((decideAfter('09.001.40.jpeg', 3) as Extract<Decision, { status: 'searching' }>).ns).toBeUndefined();
+  });
+});
+
+describe('PN já contado', () => {
+  const OUTSIDE_CATALOG = ['09.00.37.jpeg', '09.00.38.jpeg'];
+
+  it('PN fora do catálogo já contado é aceito na primeira foto, corrigindo o erro do OCR', () => {
+    const counted = createCatalogIndex(catalogPns, ['DS9908-SR00004ZZWW', 'DS2278-SR00007ZZWW']);
+    for (const file of OUTSIDE_CATALOG) {
+      const before = analyzeLabel(photos.get(file)!, catalog).readings.find(reading => reading.field === 'pn')!;
+      // Without history the OCR misread ("ZZVWW", "72ZWW") is only a probable value.
+      expect(before.value, file).not.toBe(TRUTH[file]!.pn[0]);
+      const pn = analyzeLabel(photos.get(file)!, counted).readings.find(reading => reading.field === 'pn')!;
+      expect(pn, file).toMatchObject({ value: TRUTH[file]!.pn[0], confidence: 'alta' });
+      expect(pn.evidence, file).toContain('historico');
+      // The serial was read only from text, so the second photo still confirms it.
+      expect(decideAfter(file, 1, new Set(), photos, counted).status, file).toBe('searching');
+      const decision = ready(decideAfter(file, 2, new Set(), photos, counted));
+      expect([decision.pn.value, decision.pn.confidence, decision.ns.value], file).toEqual([TRUTH[file]!.pn[0], 'alta', TRUTH[file]!.ns[0]]);
+    }
+  });
+
+  it('PN salvo durante a leitura passa a ser reconhecido sem recriar o índice', () => {
+    const index = createCatalogIndex(catalogPns);
+    expect(index.seen('DS2278-SR00007ZZWW')).toBe(false);
+    index.remember('ds2278-sr00007zzww');
+    expect(index.seen('DS2278-SR00007ZZWW')).toBe(true);
+    expect(analyzeLabel(photos.get('09.00.38.jpeg')!, index).readings.find(reading => reading.field === 'pn'))
+      .toMatchObject({ value: 'DS2278-SR00007ZZWW', confidence: 'alta' });
+  });
+
+  it('nenhum valor errado recebe confiança alta, mesmo com todos os PN das fotos já contados', () => {
+    const counted = createCatalogIndex(catalogPns, Object.values(TRUTH).flatMap(truth => truth.pn));
+    for (const set of [photos, rotated]) {
+      for (const [file, photo] of set) {
+        for (const reading of analyzeLabel(photo, counted).readings) {
+          if (reading.confidence !== 'alta') continue;
+          expect(TRUTH[file]![reading.field], `${file}: ${reading.field} ${reading.value}`).toContain(reading.value);
+        }
+      }
+    }
+  });
+
+  it('PN já contado não muda o NS escolhido nem a espera pela etiqueta central do kit', () => {
+    const counted = createCatalogIndex(catalogPns, ['DS2278-SR00007ZZWW', 'CR2278-PC10004WW']);
+    const central = ready(decideAfter('09.001.36.jpeg', 2, new Set(), photos, counted));
+    expect([central.pn.value, central.ns.value]).toEqual(['DS2278-SR00007ZZWW', '25113523703776']);
+    const next = ready(decideAfter('09.001.36.jpeg', 1, new Set(['25113523703776']), photos, counted));
+    expect([next.pn.value, next.ns.value]).toEqual(['CR2278-PC10004WW', '25134523705759']);
   });
 });

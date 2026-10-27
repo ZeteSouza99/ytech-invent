@@ -83,7 +83,7 @@ if ($ReleaseKey) {
   Write-Host "Assinatura: chave release $($signing.keyAlias)."
 } else {
   Remove-Item Env:YTECH_RELEASE_STORE_FILE -ErrorAction SilentlyContinue
-  Write-Warning 'Assinatura: chave de debug publica (android/app/debug.keystore). Qualquer APK assinado com ela atualiza o app instalado; migre para a chave release (README > Assinatura).'
+  Write-Host 'Assinatura: chave de debug (android/app/debug.keystore), por decisao de distribuicao somente interna. Veja README > Assinatura.'
 }
 $gradleArgs = @(':app:assembleRelease', "-PreactNativeArchitectures=$Architectures", '-Pkotlin.compiler.execution.strategy=in-process', '--no-daemon', '--console=plain', '--max-workers=2')
 if ($Offline) { $gradleArgs += '--offline' }
