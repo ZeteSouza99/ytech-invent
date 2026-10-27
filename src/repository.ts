@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { organizationSchema, type Organization } from '../shared/company';
 import {
   errorMessage, inventorySchema, inventoryTextSchema, itemSchema, MAX_BACKUP_INVENTORIES, MAX_ITEMS, MAX_PAYLOAD_BYTES,
-  receiptSchema, utf8ByteLength, type Inventory, type InventoryItem, type Receipt,
+  partNumberSchema, receiptSchema, utf8ByteLength, type Inventory, type InventoryItem, type Receipt,
 } from '../shared/model';
 
 type SqlValue = string | number | null;
@@ -243,10 +243,15 @@ export class InventoryRepository {
 
   // Every part number this account has saved on this device; unreadable rows are skipped, not fatal.
   async partNumbers(owner: string): Promise<string[]> {
+    // Nested CASE keeps json_type away from malformed JSON, which would make the whole query fail.
     const rows = await this.db.getAllAsync<{ pn: unknown }>(
-      `SELECT DISTINCT CASE WHEN json_valid(items.json) THEN json_extract(items.json, '$.pn') END AS pn
+      `SELECT DISTINCT CASE WHEN json_valid(items.json) THEN
+         CASE WHEN json_type(items.json, '$.pn') = 'text' THEN json_extract(items.json, '$.pn') END END AS pn
        FROM items JOIN inventories ON inventories.id = items.inventoryId WHERE inventories.owner = ?`, owner);
-    return rows.map(row => row.pn).filter((pn): pn is string => typeof pn === 'string' && pn.length > 0);
+    return [...new Set(rows.flatMap(row => {
+      const parsed = partNumberSchema.safeParse(row.pn);
+      return parsed.success ? [parsed.data] : [];
+    }))];
   }
 
   add(owner: string, id: string, input: InventoryItem): Promise<InventoryItem> {

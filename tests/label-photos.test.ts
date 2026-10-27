@@ -157,19 +157,21 @@ describe('fotos reais das etiquetas', () => {
 describe('PN já contado', () => {
   const OUTSIDE_CATALOG = ['09.00.37.jpeg', '09.00.38.jpeg'];
 
-  it('PN fora do catálogo já contado é aceito na primeira foto, corrigindo o erro do OCR', () => {
+  it('PN fora do catálogo já contado: lido com letras parecidas vale na hora; com um caractere a mais é corrigido e conferido', () => {
     const counted = createCatalogIndex(catalogPns, ['DS9908-SR00004ZZWW', 'DS2278-SR00007ZZWW']);
+    // 09.00.38 reads "SROO0072ZWW" (O/0 and Z/2); 09.00.37 reads "SRO0004ZZVWW", one character more, as a sibling model could.
+    const expected: Record<string, 'alta' | 'media'> = { '09.00.38.jpeg': 'alta', '09.00.37.jpeg': 'media' };
     for (const file of OUTSIDE_CATALOG) {
       const before = analyzeLabel(photos.get(file)!, catalog).readings.find(reading => reading.field === 'pn')!;
       // Without history the OCR misread ("ZZVWW", "72ZWW") is only a probable value.
       expect(before.value, file).not.toBe(TRUTH[file]!.pn[0]);
       const pn = analyzeLabel(photos.get(file)!, counted).readings.find(reading => reading.field === 'pn')!;
-      expect(pn, file).toMatchObject({ value: TRUTH[file]!.pn[0], confidence: 'alta' });
+      expect(pn, file).toMatchObject({ value: TRUTH[file]!.pn[0], confidence: expected[file] });
       expect(pn.evidence, file).toContain('historico');
-      // The serial was read only from text, so the second photo still confirms it.
+      // The serial was read only from text, so the second photo confirms it either way.
       expect(decideAfter(file, 1, new Set(), photos, counted).status, file).toBe('searching');
       const decision = ready(decideAfter(file, 2, new Set(), photos, counted));
-      expect([decision.pn.value, decision.pn.confidence, decision.ns.value], file).toEqual([TRUTH[file]!.pn[0], 'alta', TRUTH[file]!.ns[0]]);
+      expect([decision.pn.value, decision.pn.confidence, decision.ns.value], file).toEqual([TRUTH[file]!.pn[0], expected[file], TRUTH[file]!.ns[0]]);
     }
   });
 

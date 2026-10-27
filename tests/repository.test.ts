@@ -558,7 +558,10 @@ describe('leitura tolerante, relógio, migrações e edição de unidades', () =
       await repository.add(second.owner, second.id, { ...item('0002'), pn: 'DS2278-SR00007ZZWW' });
       await repository.add(second.owner, second.id, item('0003'));
       await repository.add(other.owner, other.id, { ...item('0004'), pn: 'SO-DA-OUTRA' });
-      sqlite.prepare('INSERT INTO items(id,inventoryId,ns,json) VALUES (?,?,?,?)').run(randomUUID(), first.id, '0009', '{quebrado');
+      // Unreadable JSON, or a valid JSON whose PN is not a part number, is skipped.
+      for (const [ns, json] of [['0009', '{quebrado'], ['0010', '{"pn":{"a":1}}'], ['0011', '{"pn":123}'], ['0012', '{"pn":"   "}'], ['0013', '[]']]) {
+        sqlite.prepare('INSERT INTO items(id,inventoryId,ns,json) VALUES (?,?,?,?)').run(randomUUID(), first.id, ns!, json!);
+      }
       expect((await repository.partNumbers(first.owner)).sort()).toEqual(['DS2278-SR00007ZZWW', 'MC3401-0G1R64SS-A6']);
       expect(await repository.partNumbers('ninguem')).toEqual([]);
     } finally { sqlite.close(); }

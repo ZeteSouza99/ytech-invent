@@ -346,3 +346,33 @@ describe('índice do catálogo', () => {
     expect(catalog.match('TC200J-1KC111A6 BR')).toEqual({ value: 'TC200J-1KC111A6 BR', kind: 'exact' });
   });
 });
+
+describe('PN já contado (histórico)', () => {
+  const NS = '25150523023493';
+  function label(pn: string): LabelScan {
+    return { barcodes: [code(NS, 820)], lines: [line(`P/N: ${pn}`, 715), line(`(S) S/N: ${NS}`, 750)] };
+  }
+  function firstPhoto(scan: LabelScan, index: typeof catalog) {
+    const pool = new ReadingPool();
+    pool.addFrame(analyzeLabel(scan, index));
+    return pool.decide({ savedSerials: new Set() });
+  }
+
+  it('PN contado lido como está, ou com letras parecidas (O/0), fica pronto na primeira foto', () => {
+    const counted = createCatalogIndex(['MC3401-0G1R64SS-A6'], ['CR2278-PC10004WW']);
+    for (const text of ['CR2278-PC10004WW', 'CR2278-PC1OOO4WW']) {
+      expect(values(analyzeLabel(label(text), counted).readings, 'pn'), text).toEqual([['CR2278-PC10004WW', 'alta']]);
+      expect(firstPhoto(label(text), counted), text).toMatchObject({ status: 'ready', pn: { value: 'CR2278-PC10004WW' }, ns: { value: NS } });
+    }
+  });
+
+  // A7 may be a sibling model of the counted A6 (as ZT41142 and ZT41143 differ only in resolution), not an OCR error.
+  it('PN a um caractere de um PN contado não é confirmado na primeira foto', () => {
+    const inCatalog = createCatalogIndex(['MC3401-0G1R64SS-A6'], ['MC3401-0G1R64SS-A6']);
+    expect(values(analyzeLabel(label('MC3401-0G1R64SS-A7'), inCatalog).readings, 'pn')).toEqual([['MC3401-0G1R64SS-A6', 'media']]);
+    expect(firstPhoto(label('MC3401-0G1R64SS-A7'), inCatalog).status).toBe('searching');
+    const outsideCatalog = createCatalogIndex([], ['CR2278-PC10004WW']);
+    expect(values(analyzeLabel(label('CR2278-PC10005WW'), outsideCatalog).readings, 'pn')).toEqual([['CR2278-PC10004WW', 'media']]);
+    expect(firstPhoto(label('CR2278-PC10005WW'), outsideCatalog).status).toBe('searching');
+  });
+});

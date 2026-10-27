@@ -237,15 +237,30 @@ function Application() {
     const selected = navigation.exportAll ? inventories.filter(entry => entry.count > 0) : current ? [current] : [];
     if (!selected.length) throw new Error('Nenhum inventário com unidades para exportar.');
     const entries: ExportEntry[] = [];
-    for (const entry of selected) entries.push({ inventory: await repository.snapshot(owner, entry.id), partial: entry.state === 'draft' });
+    // One unreadable inventory must not block exporting the others; it is left out and reported.
+    const skipped: string[] = [];
+    for (const entry of selected) {
+      try {
+        entries.push({ inventory: await repository.snapshot(owner, entry.id), partial: entry.state === 'draft' });
+      } catch (failure) {
+        if (!navigation.exportAll) throw failure;
+        skipped.push(`${entry.title}: ${errorMessage(failure).slice(0, 300)}`);
+      }
+    }
+    if (!entries.length) throw new Error(`Nenhum inventário pôde ser lido para exportar.\n${skipped.slice(0, 6).join('\n')}`);
+    const missing = skipped.length
+      ? `${skipped.length} inventário(s) ficaram de fora porque não puderam ser lidos:\n${skipped.slice(0, 6).join('\n')}${skipped.length > 6 ? '\n…' : ''}`
+      : '';
     const service = await loadWorkbookService();
     const attachment = format === 'xlsx'
       ? await service.spreadsheet(entries)
       : await createDocument(entries, format, describeFrom(service.catalog.products));
-    if (destination === 'share') await shareDocument(attachment);
-    else {
+    if (destination === 'share') {
+      await shareDocument(attachment);
+      if (missing) Alert.alert('Exportação incompleta', missing);
+    } else {
       const names = await saveWorkbookFiles([attachment], navigation.exportAll ? 'todos' : entries[0]!.inventory.id, entries.some(entry => entry.partial));
-      if (names) Alert.alert('Arquivo salvo', `${names[0]} salvo na pasta escolhida. A exportação não altera o envio pelo Gmail.`);
+      if (names) Alert.alert('Arquivo salvo', `${names[0]} salvo na pasta escolhida. A exportação não altera o envio pelo Gmail.${missing ? `\n\n${missing}` : ''}`);
     }
   }
 
