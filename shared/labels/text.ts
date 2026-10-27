@@ -2,7 +2,7 @@ import { normalizeCode } from '../model';
 import type { BarcodeRead, Box, Evidence, LabelAnalysis, LabelField, LabelScan, Reading } from './types';
 import {
   adjacent, center, DIGIT_LOOKALIKES, digitCount, editDistance, excludedValue, genericSerial, looksLikePartNumber,
-  SERIAL_DIGITS, SERIAL_PRINTER, skeleton, strongSerial,
+  SERIAL_DIGITS, SERIAL_PRINTER, skeleton, strongSerial, zeroRuns,
 } from './values';
 import type { CatalogIndex } from './catalog';
 import { barcodeConfirmed, makeReading, mergeInto, shadowedBy } from './readings';
@@ -154,10 +154,11 @@ function pnFromTokens(
     const barcode = decoded.find(item => skeleton(item.value) === key);
     if (barcode && key.length >= 5) return fromCode(barcode);
     const match = catalog.match(text);
-    if (match?.kind === 'edit') {
+    if (match?.kind === 'approximate') {
       approximate ??= makeReading('pn', match.value, raw, 'ocr', ['texto', 'rotulo', 'catalogo-aproximado'], catalog, box);
     } else if (match) {
-      // A unique catalog entry differing only by look-alike characters (O/0, S/5...) is the same part number.
+      // A unique catalog entry differing only by look-alike characters (O/0, S/5...), or a counted part number
+      // differing only by O/0, is the same part number.
       return makeReading('pn', match.value, raw, 'ocr', ['texto', 'rotulo', 'catalogo'], catalog, box);
     }
   }
@@ -173,12 +174,6 @@ function pnFromTokens(
     return makeReading('pn', value, raw, 'ocr', ['texto', 'rotulo', ...(value !== first ? ['digitos-corrigidos' as const] : [])], catalog, box);
   }
   return null;
-}
-
-// OCR reads zeros inside digit runs as the letter O ("SRO0004ZZWW"). Only used for part numbers
-// outside the catalog; the only catalog part number with O next to a digit (TC51OK) matches the catalog first.
-function zeroRuns(value: string): string {
-  return value.replace(/[0-9O]{2,}/g, run => (/\d/.test(run) ? run.replace(/O/g, '0') : run));
 }
 
 function mapDigits(value: string, from: number): string {

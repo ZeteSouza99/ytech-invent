@@ -1,7 +1,10 @@
 import { normalizeCode } from '../model';
-import { skeleton, withinOneEdit } from './values';
+import { skeleton, withinOneEdit, zeroRuns } from './values';
 
-export type CatalogMatch = { value: string; kind: 'exact' | 'lookalike' | 'edit' };
+// lookalike: differs only by characters OCR confuses (O/0, S/5...) from a single catalog part number, or only by
+// separators and O/0 from a single counted one. approximate: one character away from a single known part number,
+// or another look-alike of a counted one; a suggestion to compare with the label.
+export type CatalogMatch = { value: string; kind: 'exact' | 'lookalike' | 'approximate' };
 
 export type CatalogIndex = {
   // Known part number: in the catalog or already counted.
@@ -15,8 +18,15 @@ export type CatalogIndex = {
   match(text: string): CatalogMatch | null;
 };
 
+// The only differences that keep a reading the same part number when no catalog vouches for it.
+function plain(value: string): string {
+  return zeroRuns(value).replace(/[ _.-]/g, '');
+}
+
 export function createCatalogIndex(partNumbers: Iterable<string>, counted: Iterable<string> = []): CatalogIndex {
   const values = new Set<string>();
+  // Counted part numbers outside the catalog came from readings and may carry an OCR error.
+  const listed = new Set<string>();
   const counts = new Set<string>();
   const bySkeleton = new Map<string, string[]>();
   const add = (partNumber: string) => {
@@ -31,7 +41,10 @@ export function createCatalogIndex(partNumbers: Iterable<string>, counted: Itera
     const value = add(partNumber);
     if (value) counts.add(value);
   };
-  for (const partNumber of partNumbers) add(partNumber);
+  for (const partNumber of partNumbers) {
+    const value = add(partNumber);
+    if (value) listed.add(value);
+  }
   for (const partNumber of counted) remember(partNumber);
   return {
     has: partNumber => values.has(normalizeCode(partNumber)),
@@ -47,7 +60,12 @@ export function createCatalogIndex(partNumbers: Iterable<string>, counted: Itera
       const key = skeleton(value);
       if (key.length < 6) return null;
       const same = bySkeleton.get(key);
-      if (same) return same.length === 1 ? { value: same[0]!, kind: 'lookalike' } : null;
+      if (same) {
+        if (same.length !== 1) return null;
+        const candidate = same[0]!;
+        // Z/2 or B/8 away from a part number known only from earlier readings may be a sibling model, or that reading's error.
+        return { value: candidate, kind: listed.has(candidate) || plain(candidate) === plain(value) ? 'lookalike' : 'approximate' };
+      }
       if (key.length < 10) return null;
       let found: string | null = null;
       for (const [candidate, partNumbersWithKey] of bySkeleton) {
@@ -56,7 +74,7 @@ export function createCatalogIndex(partNumbers: Iterable<string>, counted: Itera
         if (found !== null || partNumbersWithKey.length !== 1) return null;
         found = partNumbersWithKey[0]!;
       }
-      return found ? { value: found, kind: 'edit' } : null;
+      return found ? { value: found, kind: 'approximate' } : null;
     },
   };
 }

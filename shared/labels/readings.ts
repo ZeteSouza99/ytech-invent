@@ -17,10 +17,10 @@ function confidenceOf(field: LabelField, evidence: readonly Evidence[], strongCa
   const has = (item: Evidence) => evidence.includes(item);
   if (has('fixado')) return 'alta';
   if (field === 'pn') {
-    // A part number already counted needs no second photo once identified: its barcode, a labeled text or a
-    // distinctive text, look-alike characters (O/0, Z/2) included. A text one character away ('catalogo-aproximado')
-    // may be a sibling model (ZT41142 and ZT41143) and is still compared with the label.
-    if (has('historico') && !has('catalogo-aproximado') && (has('codigo') || has('rotulo') || strongCatalog)) return 'alta';
+    // A part number already counted needs no second photo once identified by its barcode, a labeled text or a
+    // distinctive text. An approximate match may be a sibling model (ZT41142 and ZT41143) or a misreading saved
+    // earlier, and digits the catalog refused to correct may belong to another part number: both are compared with the label.
+    if (has('historico') && !has('catalogo-aproximado') && !has('digitos-corrigidos') && (has('codigo') || has('rotulo') || strongCatalog)) return 'alta';
     if (has('codigo') && (has('identificador') || has('rotulo') || (has('catalogo') && strongCatalog))) return 'alta';
     if (has('texto') && has('catalogo') && (has('rotulo') || strongCatalog)) return 'alta';
     if (has('texto') && has('rotulo') && has('catalogo-aproximado')) return 'media';

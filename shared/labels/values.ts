@@ -48,6 +48,12 @@ export function skeleton(value: string): string {
   return result;
 }
 
+// OCR reads zeros inside digit runs as the letter O ("SRO0004ZZWW"). Only used for part numbers
+// outside the catalog; the only catalog part number with O next to a digit (TC51OK) matches the catalog first.
+export function zeroRuns(value: string): string {
+  return value.replace(/[0-9O]{2,}/g, run => (/\d/.test(run) ? run.replace(/O/g, '0') : run));
+}
+
 export function withinOneEdit(left: string, right: string): boolean {
   if (left === right) return true;
   if (Math.abs(left.length - right.length) > 1) return false;

@@ -18,7 +18,7 @@ Destinatário:
 
 Leitor:
 
-- PN já contado pela conta neste aparelho é aceito na primeira foto quando identificado pelo código, pelo texto ou pelo texto com letras que o OCR confunde (O/0, Z/2). Um texto a um caractere de distância é sugerido como o PN contado, mas pede conferência com a etiqueta, porque pode ser um modelo irmão. Um PN salvo durante a leitura já vale para a unidade seguinte.
+- PN já contado pela conta neste aparelho é aceito na primeira foto quando a leitura é o próprio PN (código ou texto, desconsiderando hífens, espaços e zeros lidos como O). Uma leitura apenas parecida (Z/2, S/5, B/8, G/6 ou um caractere de diferença) é sugerida como o PN contado, mas pede conferência com a etiqueta e uma segunda foto, porque pode ser um modelo irmão ou um erro de leitura salvo antes. Um PN salvo durante a leitura já vale para a unidade seguinte.
 
 Segurança e dados:
 

@@ -430,7 +430,7 @@ export class InventoryRepository {
     return this.serialize(async () => {
       const result = recipient === undefined
         ? await this.db.runAsync("UPDATE inventories SET state='sending',lastError='' WHERE id=? AND owner=? AND state='queued'", id, owner)
-        : await this.db.runAsync("UPDATE inventories SET state='sending',lastError='' WHERE id=? AND owner=? AND state='queued' AND COALESCE(recipient,?)=?",
+        : await this.db.runAsync("UPDATE inventories SET state='sending',lastError='' WHERE id=? AND owner=? AND state='queued' AND COALESCE(NULLIF(recipient,''),?)=?",
           id, owner, DEFAULT_RECIPIENT, recipient);
       // A queued inventory may have been deleted or redirected while its email was prepared.
       // Only the caller that claims it may transmit anything.

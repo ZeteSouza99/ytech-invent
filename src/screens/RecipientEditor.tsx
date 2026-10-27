@@ -7,10 +7,12 @@ import { Button, Field, Notice } from '../ui';
 export function RecipientField({ label, value, onChangeText, busy }: {
   label: string; value: string; onChangeText: (value: string) => void; busy: boolean;
 }) {
-  const invalid = !!value.trim() && !recipientSchema.safeParse(value).success;
+  const empty = !value.trim();
+  const invalid = !empty && !recipientSchema.safeParse(value).success;
   return <View style={{ gap: 8 }}>
     <Field label={label} value={value} onChangeText={onChangeText} editable={!busy} keyboardType="email-address"
       autoCapitalize="none" autoCorrect={false} autoComplete="email" maxLength={254} placeholder="nome@empresa.com" />
+    {empty && <Notice>Digite o e-mail que vai receber o inventário.</Notice>}
     {invalid && <Notice>Confira o e-mail: use um único endereço, no formato nome@empresa.com.</Notice>}
   </View>;
 }

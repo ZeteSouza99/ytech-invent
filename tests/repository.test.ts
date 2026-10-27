@@ -711,6 +711,22 @@ describe('destinatário do e-mail', () => {
     } finally { sqlite.close(); }
   });
 
+  // Only reachable with data written outside the app: the screen shows the default, so the queue must use it too.
+  it('destinatário vazio gravado no banco segue para o padrão em vez de travar a fila', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const d = await queued(repository);
+      sqlite.prepare("UPDATE inventories SET recipient='' WHERE id=?").run(d.id);
+      expect((await repository.get(d.owner, d.id)).recipient).toBeUndefined();
+      const { delivery, calls, prepared } = recordingDelivery();
+      expect(await new Outbox(repository, delivery).sync(d.owner)).toBe(true);
+      expect(prepared).toEqual([DEFAULT_RECIPIENT]);
+      expect(calls.transmit).toEqual([`raw:Coleta>${DEFAULT_RECIPIENT}|cached`]);
+      expect((await repository.get(d.owner, d.id)).state).toBe('sent');
+    } finally { sqlite.close(); }
+  });
+
   it('migra o banco da versão 2: coleta antiga na fila segue para o destino original', async () => {
     const { repository, sqlite } = connect();
     try {

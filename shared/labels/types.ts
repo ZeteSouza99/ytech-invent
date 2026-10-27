@@ -9,8 +9,8 @@ export type Evidence =
   | 'codigo'              // decoded barcode: exact characters, protected by the symbology checksum
   | 'identificador'       // ANSI MH10.8.2 data identifier (1P, S) or ISO 15434 field
   | 'rotulo'              // printed next to "P/N", "Part Number", "S/N", "Serial No."...
-  | 'catalogo'            // exact SB1 catalog part number
-  | 'catalogo-aproximado' // printed text matched to a single catalog part number
+  | 'catalogo'            // known part number (SB1 catalog or already counted), read as it is or with look-alike characters
+  | 'catalogo-aproximado' // printed text close to a single known part number: a suggestion to compare with the label
   | 'padrao'              // matches the serial layouts found on the labels
   | 'texto'               // read from printed characters (OCR)
   | 'digitos-corrigidos'  // OCR letters mapped to digits by the serial layout

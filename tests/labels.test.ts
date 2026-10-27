@@ -341,7 +341,7 @@ describe('índice do catálogo', () => {
   it('não adivinha quando dois PNs do catálogo ficam a um caractere de distância', () => {
     const ambiguous = createCatalogIndex(['MC330K-GE4HG4RW', 'MC330K-GE4HG4RX']);
     expect(ambiguous.match('MC330K-GE4HG4R')).toBeNull();
-    expect(createCatalogIndex(['MC330K-GE4HG4RW']).match('MC330K-GE4HG4R')).toEqual({ value: 'MC330K-GE4HG4RW', kind: 'edit' });
+    expect(createCatalogIndex(['MC330K-GE4HG4RW']).match('MC330K-GE4HG4R')).toEqual({ value: 'MC330K-GE4HG4RW', kind: 'approximate' });
     expect(skeleton('DS9208-SR00004NNWW')).toBe(skeleton('D59208-5R0OO04NNWW'));
     expect(catalog.match('TC200J-1KC111A6 BR')).toEqual({ value: 'TC200J-1KC111A6 BR', kind: 'exact' });
   });
@@ -374,5 +374,27 @@ describe('PN já contado (histórico)', () => {
     const outsideCatalog = createCatalogIndex([], ['CR2278-PC10004WW']);
     expect(values(analyzeLabel(label('CR2278-PC10005WW'), outsideCatalog).readings, 'pn')).toEqual([['CR2278-PC10004WW', 'media']]);
     expect(firstPhoto(label('CR2278-PC10005WW'), outsideCatalog).status).toBe('searching');
+  });
+
+  // XT4100-82C3D4 may be another model beside the counted XT4100-B2C3D4. And DS2278-SR000072ZWW, a misreading
+  // saved once, must not confirm the correct reading of DS2278-SR00007ZZWW from then on.
+  it('leitura só parecida (B/8, Z/2) com um PN contado fora do catálogo é sugestão a conferir, não confirmação', () => {
+    const counted = createCatalogIndex(['MC3401-0G1R64SS-A6'], ['XT4100-B2C3D4', 'DS2278-SR000072ZWW']);
+    for (const text of ['XT4100-82C3D4', 'DS2278-SR00007ZZWW']) {
+      const readings = analyzeLabel(label(text), counted).readings.filter(reading => reading.field === 'pn');
+      expect(readings.map(reading => reading.confidence), text).toEqual(['media']);
+      expect(readings[0]!.evidence, text).toContain('catalogo-aproximado');
+      expect(firstPhoto(label(text), counted).status, text).toBe('searching');
+    }
+    // Catalog part numbers keep the look-alike correction they already had.
+    expect(values(analyzeLabel(label('MC34O1-0G1R64S5-A6'), counted).readings, 'pn')).toEqual([['MC3401-0G1R64SS-A6', 'alta']]);
+  });
+
+  it('dígitos que o catálogo se recusou a corrigir não são confirmados pelo histórico', () => {
+    // RT1O00-AB is as close to the catalog RT1OOO-AB as to the counted RT1000-AB.
+    const ambiguous = createCatalogIndex(['RT1OOO-AB'], ['RT1000-AB']);
+    expect(ambiguous.match('RT1O00-AB')).toBeNull();
+    expect(values(analyzeLabel(label('RT1O00-AB'), ambiguous).readings, 'pn')).toEqual([['RT1000-AB', 'media']]);
+    expect(firstPhoto(label('RT1O00-AB'), ambiguous).status).toBe('searching');
   });
 });
