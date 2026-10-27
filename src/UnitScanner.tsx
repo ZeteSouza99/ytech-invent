@@ -130,9 +130,9 @@ export function UnitScanner({
     }
   }, [serialsToSkip]);
 
-  function resume() {
+  function resume(saved?: ScannedUnit) {
     if (closingRef.current) return;
-    pool.current.reset();
+    pool.current.reset(saved ? { ns: saved.ns.value, pn: saved.pn.value } : undefined);
     setChosen(null);
     setDecision(SEARCHING);
     setFrames(0);
@@ -245,7 +245,7 @@ export function UnitScanner({
       catalog.remember(selected.pn.value);
       setMessage({ text, error: false });
       Vibration.vibrate(30);
-      resume();
+      resume(selected);
     } catch (error) {
       setMessage({ text: errorMessage(error), error: true });
     } finally {
@@ -318,7 +318,7 @@ export function UnitScanner({
               title={`NS ${option.ns.value}\nPN ${pn?.value ?? 'não identificado'}`}
               onPress={() => { if (pn) setChosen({ pn, ns: option.ns }); }} />;
           })}
-          <Button title="Ler de novo" secondary disabled={controlsBusy} onPress={resume} />
+          <Button title="Ler de novo" secondary disabled={controlsBusy} onPress={() => resume()} />
         </View> : <>
           <ReadingRow label="PN · Part number" reading={shownPn} description={describePn(shownPn)}
             confirmations={shownPn ? pool.current.confirmations(shownPn) : 0} />
@@ -337,12 +337,12 @@ export function UnitScanner({
             disabled={controlsBusy} onPress={() => { void save(unit); }} />}
           {onUse && <Button title="Usar estes valores" disabled={controlsBusy} onPress={() => { void leave(() => onUse(unit)); }} />}
           {!onSave && !onUse && <Notice>Leitura de teste: nada é salvo.</Notice>}
-          <Button title="Ler de novo" secondary disabled={controlsBusy} onPress={resume} />
+          <Button title="Ler de novo" secondary disabled={controlsBusy} onPress={() => resume()} />
         </View> : decision.status === 'searching' && <Text accessibilityLiveRegion="polite" style={[styles.body, { textAlign: 'center' }]}>
           {permission?.granted ? decision.hint : ''}{frames ? `\n${frames} ${frames === 1 ? 'foto analisada' : 'fotos analisadas'}` : ''}
         </Text>}
 
-        {paused && !unit && decision.status === 'searching' && <Button title="Retomar leitura" secondary disabled={controlsBusy || !!cleanupError} onPress={resume} />}
+        {paused && !unit && decision.status === 'searching' && <Button title="Retomar leitura" secondary disabled={controlsBusy || !!cleanupError} onPress={() => resume()} />}
         {onManual && <Button title="Digitar ou corrigir manualmente" secondary disabled={controlsBusy}
           onPress={() => { void leave(() => onManual({ ...(shownPn ? { pn: shownPn } : {}), ...(shownNs ? { ns: shownNs } : {}) })); }} />}
 

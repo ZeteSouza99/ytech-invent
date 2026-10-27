@@ -29,32 +29,52 @@ export class ReadingPool {
   // Part number key -> serial numbers it was printed with since the last reset. A part number read with no serial
   // number (a label that only shows the part number) has no owner and may complete the serial read next.
   private owners = new Map<string, Set<string>>();
+  // Part numbers seen in a photo, not only by the live barcode reader.
+  private photographed = new Set<string>();
+  // The unit saved just before this reading, whose label is often still in view.
+  private saved: string | undefined;
   private focus: string | undefined;
   private latestSerials = 0;
 
   addFrame(analysis: LabelAnalysis): void {
     this.frame += 1;
-    for (const reading of analysis.readings) this.merge(reading);
-    for (const pair of analysis.pairs) {
-      const key = keyOf('pn', pair.pn, pair.suggested);
-      this.pairs.set(pair.ns, key);
-      this.owners.set(key, new Set([...(this.owners.get(key) ?? []), pair.ns]));
+    for (const reading of analysis.readings) {
+      this.merge(reading);
+      this.photographed.add(readingKey(reading));
     }
+    for (const pair of analysis.pairs) this.pair(pair.ns, keyOf('pn', pair.pn, pair.suggested));
     this.focus = analysis.focus;
     this.latestSerials = analysis.serials;
   }
 
   addLive(readings: Reading[]): void {
     for (const reading of readings) this.merge(reading);
+    // One code that carries both values, like the 2D codes of the boxes, pairs them.
+    const serial = readings.find(reading => reading.field === 'ns');
+    const partNumber = readings.find(reading => reading.field === 'pn');
+    if (serial && partNumber) this.pair(serial.value, readingKey(partNumber));
   }
 
-  reset(): void {
+  // `saved` is the unit just saved: its part number stays its own while its label is still in view.
+  reset(saved?: { ns: string; pn: string }): void {
     this.frame = 0;
     this.entries.clear();
     this.pairs.clear();
     this.owners.clear();
+    this.photographed.clear();
+    this.saved = saved ? normalizeCode(saved.ns) : undefined;
+    if (saved) this.own(keyOf('pn', normalizeCode(saved.pn)), normalizeCode(saved.ns));
     this.focus = undefined;
     this.latestSerials = 0;
+  }
+
+  private pair(serial: string, partNumberKey: string): void {
+    this.pairs.set(serial, partNumberKey);
+    this.own(partNumberKey, serial);
+  }
+
+  private own(partNumberKey: string, serial: string): void {
+    this.owners.set(partNumberKey, new Set([...(this.owners.get(partNumberKey) ?? []), serial]));
   }
 
   private merge(reading: Reading): void {
@@ -98,11 +118,19 @@ export class ReadingPool {
     const acceptedPns = partNumbers.filter(entry => this.acceptable(entry));
     const lockedPn = options.lockedPn ? normalizeCode(options.lockedPn) : null;
     const keyed = (entry: Entry) => readingKey(entry.reading);
+    const confirmedSerials = [...this.entries.values()].map(entry => entry.reading).filter(reading => reading.field === 'ns' && barcodeConfirmed(reading));
+    // The unit just saved, and serial numbers read with some certainty that are not misreadings of one confirmed by
+    // its barcode, own the part numbers printed with them.
+    const realOwner = (ns: string) => {
+      if (ns === this.saved) return true;
+      const reading = this.entries.get(keyOf('ns', ns))?.reading;
+      return reading !== undefined && reading.confidence !== 'baixa' && !shadowedBy(reading, confirmedSerials);
+    };
     // A part number read on the label of another serial number belongs to that unit, as when the camera moves on
     // from the unit just saved to the next one.
     const belongsTo = (entry: Entry, ns: string | undefined) => {
-      const owners = this.owners.get(keyed(entry));
-      return !owners || (ns !== undefined && owners.has(ns));
+      const owners = [...(this.owners.get(keyed(entry)) ?? [])].filter(realOwner);
+      return owners.length === 0 || (ns !== undefined && owners.includes(ns));
     };
     const multiple = (entries: Entry[]): Decision => ({
       status: 'multiple',
@@ -152,17 +180,24 @@ export class ReadingPool {
       }
       partNumber = { field: 'pn', value: lockedPn, raw: lockedPn, source: 'ocr', evidence: ['fixado'], confidence: 'alta' };
     } else {
-      const paired = serial ? this.pairs.get(serial.reading.value) : undefined;
+      const ns = serial?.reading.value;
+      const paired = ns ? this.pairs.get(ns) : undefined;
       const pairedEntry = paired ? acceptedPns.find(entry => keyed(entry) === paired) : undefined;
+      const serialFrames = serial?.frames ?? new Set<number>();
+      // Read in the same photo as this serial number, or by the live reader at the same moment.
+      const together = (entry: Entry) => [...entry.frames].some(frame => serialFrames.has(frame));
+      // Another part number completes this serial number only if no other unit owns it. While this label's own part
+      // number is still being confirmed, it must be in the same photo, with no other label in view; a part number only
+      // read live must have been read together with this serial number.
+      const usable = (entry: Entry) => belongsTo(entry, ns) && (paired !== undefined
+        ? this.latestSerials <= 1 && together(entry)
+        : this.photographed.has(keyed(entry)) || together(entry));
       // One option per part number, the most certain reading first.
-      const available = acceptedPns.filter((entry, index) => belongsTo(entry, serial?.reading.value) &&
-        acceptedPns.findIndex(other => other.reading.value === entry.reading.value && belongsTo(other, serial?.reading.value)) === index);
-      // With several labels in view, another label's part number must not stand in for this label's own one
-      // while it is still being confirmed.
-      const ownPending = !pairedEntry && paired !== undefined && this.latestSerials > 1;
+      const available = acceptedPns.filter((entry, index) => usable(entry) &&
+        acceptedPns.findIndex(other => other.reading.value === entry.reading.value && usable(other)) === index);
       if (pairedEntry) partNumber = pairedEntry.reading;
-      else if (!ownPending && available.length === 1) partNumber = available[0]!.reading;
-      else if (!ownPending && available.length > 1 && serial) {
+      else if (available.length === 1) partNumber = available[0]!.reading;
+      else if (available.length > 1 && serial) {
         return { status: 'multiple', options: available.map(entry => ({ pn: entry.reading, ns: serial!.reading })) };
       }
     }
