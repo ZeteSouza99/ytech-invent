@@ -63,7 +63,9 @@ export class ReadingPool {
     this.owners.clear();
     this.photographed.clear();
     this.saved = saved ? normalizeCode(saved.ns) : undefined;
-    if (saved) this.own(keyOf('pn', normalizeCode(saved.pn)), normalizeCode(saved.ns));
+    if (saved) {
+      for (const suggested of [false, true]) this.own(keyOf('pn', normalizeCode(saved.pn), suggested), normalizeCode(saved.ns));
+    }
     this.focus = undefined;
     this.latestSerials = 0;
   }
@@ -183,15 +185,17 @@ export class ReadingPool {
       const ns = serial?.reading.value;
       const paired = ns ? this.pairs.get(ns) : undefined;
       const pairedEntry = paired ? acceptedPns.find(entry => keyed(entry) === paired) : undefined;
+      // The part number printed with this serial number, still in view and being confirmed.
+      const ownPending = !pairedEntry && paired !== undefined && partNumbers.some(entry => keyed(entry) === paired);
       const serialFrames = serial?.frames ?? new Set<number>();
-      // Read in the same photo as this serial number, or by the live reader at the same moment.
-      const together = (entry: Entry) => [...entry.frames].some(frame => serialFrames.has(frame));
+      // Photos (or live readings at the same moment) that showed the part number together with this serial number.
+      const together = (entry: Entry) => [...entry.frames].filter(frame => serialFrames.has(frame)).length;
       // Another part number completes this serial number only if no other unit owns it. While this label's own part
-      // number is still being confirmed, it must be in the same photo, with no other label in view; a part number only
-      // read live must have been read together with this serial number.
-      const usable = (entry: Entry) => belongsTo(entry, ns) && (paired !== undefined
-        ? this.latestSerials <= 1 && together(entry)
-        : this.photographed.has(keyed(entry)) || together(entry));
+      // number is in view and being confirmed, the other one must have been in two photos with this serial number and
+      // no other label; a part number only read live must have been read together with this serial number.
+      const usable = (entry: Entry) => belongsTo(entry, ns) && (ownPending
+        ? this.latestSerials <= 1 && together(entry) >= 2
+        : this.photographed.has(keyed(entry)) || together(entry) > 0);
       // One option per part number, the most certain reading first.
       const available = acceptedPns.filter((entry, index) => usable(entry) &&
         acceptedPns.findIndex(other => other.reading.value === entry.reading.value && usable(other)) === index);

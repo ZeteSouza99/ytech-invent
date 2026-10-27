@@ -523,12 +523,41 @@ describe('câmera passando da unidade salva para a próxima', () => {
     expect(pool.decide({ savedSerials: new Set() })).toMatchObject({ status: 'ready', ns: { value: SAVED }, pn: { value: 'MC3401-0G1R64SS-A6' } });
   });
 
-  it('com o PN do texto ainda em confirmação, o código do PN na mesma foto completa a unidade', () => {
-    // The text next to the serial number is not the part number encoded in the barcode of the same label.
-    const scan: LabelScan = {
-      lines: [line('P/N: QQ9999-ZZZ99', 120), line(`(S) S/N: ${NEXT}`, 160)],
+  it('com o PN do texto variando entre fotos, o código do PN na mesma foto completa a unidade', () => {
+    // The OCR reads the text next to the serial number differently in each photo; the barcode of the label does not change.
+    const scan = (text: string): LabelScan => ({
+      lines: [line(`P/N: ${text}`, 120), line(`(S) S/N: ${NEXT}`, 160)],
       barcodes: [code('MC3401-0G1R64SS-A6', 20), code(NEXT, 200)],
+    });
+    expect(decisions([scan('QQ9999-ZZZ99'), scan('QQ9998-ZZZ98')], catalog)).toEqual(['searching', `${NEXT} MC3401-0G1R64SS-A6/alta`]);
+  });
+
+  it('o PN da etiqueta vizinha na mesma foto não completa a unidade cujo PN está sendo confirmado', () => {
+    // MC3401 belongs to a neighbouring label whose serial number is out of the photo.
+    const scan: LabelScan = {
+      lines: [line('P/N: MC3401-0G1R64SS-A6', 20), line('P/N: XT4100-82C3D4', 300), line(`(S) S/N: ${NEXT}`, 340)],
+      barcodes: [code(NEXT, 380)],
     };
-    expect(decisions([scan], catalog)).toEqual([`${NEXT} MC3401-0G1R64SS-A6/alta`]);
+    expect(decisions([scan, scan], catalog)).toEqual(['searching', `${NEXT} XT4100-82C3D4/media`]);
+  });
+
+  it('PN e NS longe um do outro: o PN exato fotografado depois de uma leitura pendente completa o NS', () => {
+    // First a distant photo with both (the part number read one character off), then the part number up close,
+    // then the serial number up close.
+    const distant: LabelScan = { lines: [line('P/N: MC3401-0G1R64SS-A7', 100), line(`(S) S/N: ${NEXT}`, 140)], barcodes: [code(NEXT, 180)] };
+    const partNumber = single('MC3401-0G1R64SS-A6', null);
+    const serialNumber = single(null, NEXT);
+    expect(decisions([distant, partNumber, serialNumber, serialNumber], catalog))
+      .toEqual(['searching', 'searching', 'searching', `${NEXT} MC3401-0G1R64SS-A6/alta`]);
+  });
+
+  it('a sugestão do PN da unidade salva também é dela', () => {
+    const counted = createCatalogIndex([], ['XT4100-B2C3D4']);
+    const pool = new ReadingPool();
+    pool.reset({ ns: SAVED, pn: 'XT4100-B2C3D4' });
+    for (const scan of [single('XT4100-82C3D4', null), single('XT4100-82C3D4', null), single(null, NEXT), single(null, NEXT)]) {
+      pool.addFrame(analyzeLabel(scan, counted));
+      expect(pool.decide({ savedSerials: new Set([SAVED]) }).status).toBe('searching');
+    }
   });
 });
