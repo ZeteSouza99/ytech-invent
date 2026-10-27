@@ -443,6 +443,20 @@ describe('várias etiquetas na mesma foto', () => {
     const known = twoLabels('XT4100-82C3D4', 'XT4100-B2C3D4', true);
     expect(after(1, known, counted)).toMatchObject({ status: 'ready', ns: { value: BOTTOM }, pn: { value: 'XT4100-B2C3D4', confidence: 'alta' } });
   });
+
+  it('o texto do modelo irmão não é trocado pelo código 1P do PN da etiqueta vizinha', () => {
+    // The sibling's text is so close to the neighbour's 1P barcode that it looks like a misreading of it.
+    const scan: LabelScan = {
+      width: 1200, height: 1600,
+      lines: [
+        line('P/N: ZT41142-T0A0000Z', 510, 300), line(`(S) S/N: ${TOP}`, 550, 300),
+        line('P/N: ZT41143-T0A0000Z', 690, 300, 50), line(`(S) S/N: ${BOTTOM}`, 745, 300),
+      ],
+      barcodes: [code('1PZT41142-T0A0000Z', 450, 300), code(TOP, 590, 300), code(BOTTOM, 780, 300)],
+    };
+    expect(after(1, scan, catalog)).toMatchObject({ status: 'searching', ns: { value: BOTTOM }, pn: { value: 'ZT41143-T0A0000Z' } });
+    expect(after(2, scan, catalog)).toMatchObject({ status: 'ready', ns: { value: BOTTOM }, pn: { value: 'ZT41143-T0A0000Z', confidence: 'media' } });
+  });
 });
 
 describe('câmera passando da unidade salva para a próxima', () => {

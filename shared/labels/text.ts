@@ -138,6 +138,9 @@ function misreadOf(text: string, decoded: DecodedValue[], box: Box | undefined, 
   return closest.length === 1 ? matches.find(match => match.distance === best)!.item : null;
 }
 
+// Readings whose text was replaced by the barcode printed beside it, which may be on another label in view.
+const correctedByCode = new WeakSet<Reading>();
+
 function pnFromTokens(
   tokens: string[], raw: string, catalog: CatalogIndex, decoded: DecodedValue[], box?: Box,
 ): Reading | null {
@@ -165,7 +168,10 @@ function pnFromTokens(
   // The exact code printed beside a misread text beats a catalog entry one character away.
   for (let size = Math.min(tokens.length, 4); size >= 1; size -= 1) {
     const near = misreadOf(tokens.slice(0, size).join(''), decoded, box, partNumberCode);
-    if (near) return fromCode(near);
+    if (!near) continue;
+    const reading = fromCode(near);
+    if (reading) correctedByCode.add(reading);
+    return reading;
   }
   if (approximate) return approximate;
   return asPrinted(tokens, raw, catalog, box);
@@ -287,8 +293,9 @@ export function analyzeLabel(scan: LabelScan, catalog: CatalogIndex): LabelAnaly
     return { text, ...(line.box ? { box: line.box } : {}), hits: labelHits(text) };
   });
 
-  // A suggested part number ('catalogo-aproximado') waits until every exact reading of the photo is known.
-  const suggestions: { reading: Reading; printed: Reading | null }[] = [];
+  // A part number taken from another one, a suggestion ('catalogo-aproximado') or the barcode beside a misread text,
+  // waits until every exact reading of the photo is known.
+  const suggestions: { reading: Reading; printed: Reading | null; at?: Box }[] = [];
   lines.forEach((line, index) => {
     for (const region of valueRegions(line)) {
       if (region.kind === 'other') continue;
@@ -311,8 +318,9 @@ export function analyzeLabel(scan: LabelScan, catalog: CatalogIndex): LabelAnaly
       }
       if (!reading) continue;
       if (reading.source === 'barcode') claimed.add(reading.value);
-      if (suggestion(reading)) suggestions.push({ reading, printed: asPrinted(tokens, origin.text, catalog, origin.box) });
-      else mergeInto(readings, reading, catalog);
+      if (suggestion(reading) || correctedByCode.has(reading)) {
+        suggestions.push({ reading, printed: asPrinted(tokens, origin.text, catalog, origin.box), ...(origin.box ? { at: origin.box } : {}) });
+      } else mergeInto(readings, reading, catalog);
     }
   });
 
@@ -339,23 +347,28 @@ export function analyzeLabel(scan: LabelScan, catalog: CatalogIndex): LabelAnaly
     }
   }
 
-  // With several units in view, text close to a part number printed exactly on another unit's label is more likely a
-  // sibling model (ZT41142 and ZT41143) than a misreading of it: keep what that label shows, so that each serial
-  // number pairs with the part number of its own label.
+  // With several units in view, text close to a part number printed on another unit's label is more likely a sibling
+  // model (ZT41142 and ZT41143) than a misreading of it: keep what that label shows, so that each serial number pairs
+  // with the part number of its own label.
   const known = new Map(readings);
   const confirmed = [...known.values()].filter(barcodeConfirmed);
   const inView = [...known.values()].filter(reading =>
     reading.field === 'ns' && reading.box && reading.confidence !== 'baixa' && !shadowedBy(reading, confirmed));
-  for (const { reading, printed } of suggestions) {
-    const exact = known.get(`pn|${reading.value}`);
-    const elsewhere = inView.length > 1 && !!exact?.box && !!reading.box && ownerOf(exact.box, inView) !== ownerOf(reading.box, inView);
+  for (const { reading, printed, at } of suggestions) {
+    // Where the replacement is printed: the barcode itself, or an exact reading of the suggested part number.
+    const source = correctedByCode.has(reading) ? reading.box : known.get(`pn|${reading.value}`)?.box;
+    const elsewhere = inView.length > 1 && !!source && !!at && ownerOf(source, inView) !== ownerOf(at, inView);
     const chosen = elsewhere ? printed : reading;
     if (chosen) mergeInto(readings, chosen, catalog);
   }
 
   const all = [...readings.values()];
   const exact = all.filter(barcodeConfirmed);
-  const list = all.filter(reading => !shadowedBy(reading, exact));
+  // A part number read only as text is a misreading of a code printed on its own unit's label, not of another unit's.
+  const sameUnit = (reading: Reading, other: Reading) =>
+    inView.length <= 1 || !reading.box || !other.box || ownerOf(reading.box, inView) === ownerOf(other.box, inView);
+  const list = all.filter(reading =>
+    !shadowedBy(reading, reading.field === 'pn' ? exact.filter(other => sameUnit(reading, other)) : exact));
   const serials = new Set(list.filter(reading => reading.field === 'ns' && reading.confidence !== 'baixa').map(reading => reading.value)).size;
   const focus = focusOf(list, scan.width, scan.height);
   return { readings: list, pairs: pairsOf(list), serials, ...(focus ? { focus } : {}) };

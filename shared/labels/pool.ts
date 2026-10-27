@@ -107,18 +107,6 @@ export class ReadingPool {
     const recent = [...this.entries.values()].filter(entry => entry.last >= this.frame - (RECENT_FRAMES - 1));
     const order = (left: Entry, right: Entry) =>
       RANK[right.reading.confidence] - RANK[left.reading.confidence] || right.frames.size - left.frames.size || right.last - left.last;
-    // A misread in one photo ("…778") of a value another photo confirmed by barcode ("…776") is not another unit.
-    const exact = recent.map(entry => entry.reading).filter(barcodeConfirmed);
-    const visible = recent.filter(entry => !shadowedBy(entry.reading, exact));
-    const serials = visible.filter(entry => entry.reading.field === 'ns').sort(order);
-    const partNumbers = visible.filter(entry => entry.reading.field === 'pn').sort(order);
-    const accepted = serials.filter(entry => this.acceptable(entry));
-    const unsaved = serials.filter(entry => !options.savedSerials.has(entry.reading.value));
-    // Serial numbers still on their way to confirmation may be the unit being counted.
-    const candidates = unsaved.filter(entry => entry.reading.confidence !== 'baixa');
-    const fresh = candidates.filter(entry => this.acceptable(entry));
-    const acceptedPns = partNumbers.filter(entry => this.acceptable(entry));
-    const lockedPn = options.lockedPn ? normalizeCode(options.lockedPn) : null;
     const keyed = (entry: Entry) => readingKey(entry.reading);
     const confirmedSerials = [...this.entries.values()].map(entry => entry.reading).filter(reading => reading.field === 'ns' && barcodeConfirmed(reading));
     // The unit just saved, and serial numbers read with some certainty that are not misreadings of one confirmed by
@@ -128,10 +116,31 @@ export class ReadingPool {
       const reading = this.entries.get(keyOf('ns', ns))?.reading;
       return reading !== undefined && reading.confidence !== 'baixa' && !shadowedBy(reading, confirmedSerials);
     };
+    const ownersOf = (entry: Entry) => [...(this.owners.get(keyed(entry)) ?? [])].filter(realOwner);
+    // Printed with the serial numbers of different units.
+    const apart = (entry: Entry, other: Entry) => {
+      const mine = ownersOf(entry);
+      const theirs = ownersOf(other);
+      return mine.length > 0 && theirs.length > 0 && !mine.some(ns => theirs.includes(ns));
+    };
+    // A misread in one photo ("…778") of a value another photo confirmed by barcode ("…776") is not another unit,
+    // unless the two were printed on the labels of different serial numbers (sibling models side by side).
+    const exact = recent.filter(entry => barcodeConfirmed(entry.reading));
+    const visible = recent.filter(entry =>
+      !shadowedBy(entry.reading, exact.filter(other => !apart(entry, other)).map(other => other.reading)));
+    const serials = visible.filter(entry => entry.reading.field === 'ns').sort(order);
+    const partNumbers = visible.filter(entry => entry.reading.field === 'pn').sort(order);
+    const accepted = serials.filter(entry => this.acceptable(entry));
+    const unsaved = serials.filter(entry => !options.savedSerials.has(entry.reading.value));
+    // Serial numbers still on their way to confirmation may be the unit being counted.
+    const candidates = unsaved.filter(entry => entry.reading.confidence !== 'baixa');
+    const fresh = candidates.filter(entry => this.acceptable(entry));
+    const acceptedPns = partNumbers.filter(entry => this.acceptable(entry));
+    const lockedPn = options.lockedPn ? normalizeCode(options.lockedPn) : null;
     // A part number read on the label of another serial number belongs to that unit, as when the camera moves on
     // from the unit just saved to the next one.
     const belongsTo = (entry: Entry, ns: string | undefined) => {
-      const owners = [...(this.owners.get(keyed(entry)) ?? [])].filter(realOwner);
+      const owners = ownersOf(entry);
       return owners.length === 0 || (ns !== undefined && owners.includes(ns));
     };
     const multiple = (entries: Entry[]): Decision => ({
