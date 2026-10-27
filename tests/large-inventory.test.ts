@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { InventoryRepository, type LocalDatabase } from '../src/repository';
 import { inventoriesCsv, inventoriesHtml, inventoriesJson, parseInventoryBackup } from '../src/exportFormats';
 import { buildInventoryMessage } from '../shared/mime';
-import { MAX_ITEMS, type InventoryItem } from '../shared/model';
+import { DEFAULT_RECIPIENT, MAX_ITEMS, type InventoryItem } from '../shared/model';
 import { describeFrom } from '../shared/report';
 import { createWorkbookService } from '../shared/workbook';
 
@@ -76,7 +76,7 @@ describe('coleta no limite de 10.000 unidades', () => {
       expect(inventoriesCsv(entries, describe).split('\r\n')).toHaveLength(MAX_ITEMS + 1);
       expect(parseInventoryBackup(inventoriesJson(entries))[0]!.inventory.items).toHaveLength(MAX_ITEMS);
 
-      const raw = buildInventoryMessage({ inventory, user, attachments: [spreadsheet] });
+      const raw = buildInventoryMessage({ inventory, user, recipient: DEFAULT_RECIPIENT, attachments: [spreadsheet] });
       expect(raw.length).toBeLessThan(GMAIL_LIMIT_BYTES);
     } finally { sqlite.close(); }
   }, 180_000);

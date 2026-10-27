@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { codeSchema, errorMessage, inventorySchema, itemSchema, partNumberSchema, utf8ByteLength } from '../shared/model';
+import { codeSchema, DEFAULT_RECIPIENT, errorMessage, inventorySchema, itemSchema, partNumberSchema, recipientSchema, utf8ByteLength } from '../shared/model';
 import { organizationKindLabel } from '../shared/company';
 
 describe('valores aceitos para PN e NS', () => {
@@ -55,6 +55,22 @@ describe('contrato de inventário', () => {
     const outside = inventorySchema.safeParse({ ...inventory, items: [{ ...item, capturedAt: '2026-10-01T12:00:00.000Z' }] });
     expect(errorMessage(outside.error)).toContain('NS 00123');
     expect(errorMessage(outside.error)).toContain('relógio');
+  });
+});
+
+describe('destinatário digitado', () => {
+  it('aceita um único endereço e o normaliza para comparação', () => {
+    expect(recipientSchema.parse('  Compras.Estoque+inv@Cliente.com.BR ')).toBe('compras.estoque+inv@cliente.com.br');
+    expect(recipientSchema.parse(DEFAULT_RECIPIENT)).toBe(DEFAULT_RECIPIENT);
+  });
+
+  it('recusa listas, nomes, quebras de linha e endereços incompletos, explicando em português', () => {
+    for (const value of ['', 'compras', 'compras@cliente', '@cliente.com', 'a@cliente.com; b@cliente.com', 'a b@cliente.com',
+      'Compras <a@cliente.com>', 'a@cliente.com\nBcc: b@cliente.com', `${'a'.repeat(250)}@cliente.com`]) {
+      const parsed = recipientSchema.safeParse(value);
+      expect(parsed.success, value).toBe(false);
+      expect(errorMessage(parsed.error), value).toMatch(/e-mail válido|longo demais/);
+    }
   });
 });
 

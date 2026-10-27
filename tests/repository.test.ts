@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { InventoryRepository, type Draft, type LocalDatabase } from '../src/repository';
 import { Outbox, type Delivery } from '../src/outbox';
 import type { TransmitResult } from '../shared/gmail';
-import { inventorySchema, itemSchema, MAX_PAYLOAD_BYTES, type Inventory, type InventoryItem } from '../shared/model';
+import { DEFAULT_RECIPIENT, inventorySchema, itemSchema, MAX_PAYLOAD_BYTES, type Inventory, type InventoryItem } from '../shared/model';
 import { YTECH_CNPJ, YTECH_NAME } from '../shared/company';
 
 function connect(path = ':memory:') {
@@ -518,9 +518,9 @@ describe('leitura tolerante, relógio, migrações e edição de unidades', () =
     const { repository, sqlite } = connect();
     try {
       await repository.initialize();
-      expect(sqlite.prepare('PRAGMA user_version').get()?.user_version).toBe(2);
+      expect(sqlite.prepare('PRAGMA user_version').get()?.user_version).toBe(3);
       await repository.initialize();
-      expect(sqlite.prepare('PRAGMA user_version').get()?.user_version).toBe(2);
+      expect(sqlite.prepare('PRAGMA user_version').get()?.user_version).toBe(3);
       sqlite.exec('PRAGMA user_version = 99');
       await expect(repository.initialize()).rejects.toThrow('versão mais nova');
     } finally { sqlite.close(); }
@@ -586,6 +586,156 @@ describe('leitura tolerante, relógio, migrações e edição de unidades', () =
       expect(await outbox.sync(d.owner, { background: true })).toBe(true);
       expect((await repository.get(d.owner, d.id)).state).toBe('sent');
       expect(await outbox.sync(d.owner)).toBe(false);
+    } finally { sqlite.close(); }
+  });
+});
+
+describe('destinatário do e-mail', () => {
+  // Records the recipient each preparation received and puts it in the message, so a transmission shows where it went.
+  function recordingDelivery(onPrepare?: () => Promise<void>) {
+    const prepared: string[] = [];
+    const fake = fakeDelivery(async () => sent, {
+      async prepare(_owner, inventory, recipient) {
+        prepared.push(recipient);
+        await onPrepare?.();
+        return { raw: `raw:${inventory.title}>${recipient}`, warnings: [] };
+      },
+    });
+    return { ...fake, prepared };
+  }
+
+  async function withUnit(repository: InventoryRepository): Promise<Draft> {
+    const d = draft();
+    await repository.create(d);
+    await repository.add(d.owner, d.id, item());
+    return d;
+  }
+
+  it('guarda o destinatário digitado ao concluir e envia para ele', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const d = await withUnit(repository);
+      await repository.finish(d.owner, d.id, '  Compras@Cliente.com.br ');
+      expect((await repository.list(d.owner))[0]).toMatchObject({ id: d.id, state: 'queued', recipient: 'compras@cliente.com.br' });
+      // The recipient belongs to the sending, not to the inventory content exported or backed up.
+      expect(await repository.payload(d.owner, d.id)).not.toHaveProperty('recipient');
+      const { delivery, calls, prepared } = recordingDelivery();
+      await new Outbox(repository, delivery).sync(d.owner);
+      expect(prepared).toEqual(['compras@cliente.com.br']);
+      expect(calls.transmit).toEqual(['raw:Coleta>compras@cliente.com.br|cached']);
+      const sentInventory = await repository.get(d.owner, d.id);
+      expect(sentInventory.state).toBe('sent');
+      expect(sentInventory.receipt).toContain('Enviado pelo seu Gmail para compras@cliente.com.br');
+    } finally { sqlite.close(); }
+  });
+
+  it('sem destinatário informado usa o padrão e recusa endereço inválido sem concluir', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const d = await withUnit(repository);
+      for (const invalid of ['', 'compras@cliente', 'a@cliente.com, b@cliente.com', 'a@cliente.com\r\nBcc: b@cliente.com', 'Compras <a@cliente.com>']) {
+        await expect(repository.finish(d.owner, d.id, invalid), invalid).rejects.toThrow('e-mail válido');
+      }
+      expect((await repository.get(d.owner, d.id)).state).toBe('draft');
+      await repository.finish(d.owner, d.id);
+      expect((await repository.get(d.owner, d.id)).recipient).toBe(DEFAULT_RECIPIENT);
+    } finally { sqlite.close(); }
+  });
+
+  it('permite trocar o destinatário só enquanto nada foi transmitido', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const d = await withUnit(repository);
+      await expect(repository.updateRecipient(d.owner, d.id, 'novo@cliente.com.br')).rejects.toThrow('pendente');
+      await repository.finish(d.owner, d.id);
+      await repository.updateRecipient(d.owner, d.id, 'Novo@Cliente.com.br');
+      expect((await repository.get(d.owner, d.id)).recipient).toBe('novo@cliente.com.br');
+      await expect(repository.updateRecipient(d.owner, d.id, 'invalido')).rejects.toThrow('e-mail válido');
+      await expect(repository.updateRecipient('outra-conta', d.id, 'x@cliente.com.br')).rejects.toThrow('não encontrado');
+      expect(await repository.markSending(d.owner, d.id)).toBe(true);
+      await expect(repository.updateRecipient(d.owner, d.id, 'outro@cliente.com.br')).rejects.toThrow('pendente');
+      await repository.settle(d.owner, d.id, { status: 'failed', message: 'Endereço recusado', warnings: [] });
+      await repository.updateRecipient(d.owner, d.id, 'corrigido@cliente.com.br');
+      expect((await repository.get(d.owner, d.id)).recipient).toBe('corrigido@cliente.com.br');
+      await repository.requeue(d.owner, d.id, false);
+      await repository.markSending(d.owner, d.id);
+      await repository.settle(d.owner, d.id, { status: 'uncertain', message: 'Sem confirmação', warnings: [] });
+      await expect(repository.updateRecipient(d.owner, d.id, 'tarde@cliente.com.br')).rejects.toThrow('pendente');
+      await repository.requeue(d.owner, d.id, true);
+      await repository.markSending(d.owner, d.id);
+      await repository.settle(d.owner, d.id, { status: 'sent', message: 'Enviado', warnings: [] });
+      await expect(repository.updateRecipient(d.owner, d.id, 'tarde@cliente.com.br')).rejects.toThrow('pendente');
+      expect((await repository.get(d.owner, d.id)).recipient).toBe('corrigido@cliente.com.br');
+    } finally { sqlite.close(); }
+  });
+
+  it('guarda o destino padrão por conta e ignora valor salvo inválido', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      expect(await repository.defaultRecipient('a')).toBe(DEFAULT_RECIPIENT);
+      expect(await repository.setDefaultRecipient('a', ' Estoque@Ytechsolucoes.com ')).toBe('estoque@ytechsolucoes.com');
+      expect(await repository.defaultRecipient('a')).toBe('estoque@ytechsolucoes.com');
+      expect(await repository.defaultRecipient('b')).toBe(DEFAULT_RECIPIENT);
+      await repository.setDefaultRecipient('a', 'outro@ytechsolucoes.com');
+      expect(await repository.defaultRecipient('a')).toBe('outro@ytechsolucoes.com');
+      await expect(repository.setDefaultRecipient('a', 'sem-arroba')).rejects.toThrow('e-mail válido');
+      expect(await repository.defaultRecipient('a')).toBe('outro@ytechsolucoes.com');
+      sqlite.prepare("UPDATE settings SET value=? WHERE owner='a' AND name='recipient'").run('x@cliente.com\r\nBcc: z@cliente.com');
+      expect(await repository.defaultRecipient('a')).toBe(DEFAULT_RECIPIENT);
+    } finally { sqlite.close(); }
+  });
+
+  it('não transmite se o destinatário mudar durante a preparação; o próximo envio usa o novo', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const d = await queued(repository);
+      let redirected = false;
+      const { delivery, calls, prepared } = recordingDelivery(async () => {
+        if (redirected) return;
+        redirected = true;
+        await repository.updateRecipient(d.owner, d.id, 'novo@cliente.com.br');
+      });
+      const outbox = new Outbox(repository, delivery);
+      expect(await outbox.sync(d.owner)).toBe(false);
+      expect(calls.transmit).toEqual([]);
+      expect((await repository.get(d.owner, d.id)).state).toBe('queued');
+      expect(await outbox.sync(d.owner)).toBe(true);
+      expect(prepared).toEqual([DEFAULT_RECIPIENT, 'novo@cliente.com.br']);
+      expect(calls.transmit).toEqual(['raw:Coleta>novo@cliente.com.br|cached']);
+      expect((await repository.get(d.owner, d.id)).state).toBe('sent');
+    } finally { sqlite.close(); }
+  });
+
+  it('migra o banco da versão 2: coleta antiga na fila segue para o destino original', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      sqlite.exec(`
+        CREATE TABLE inventories (
+          id TEXT PRIMARY KEY, owner TEXT NOT NULL, title TEXT NOT NULL, location TEXT NOT NULL,
+          startedAt TEXT NOT NULL, completedAt TEXT, catalogVersion TEXT NOT NULL,
+          state TEXT NOT NULL DEFAULT 'draft', lastError TEXT NOT NULL DEFAULT '', receipt TEXT, organization TEXT
+        );
+        CREATE TABLE items (id TEXT PRIMARY KEY, inventoryId TEXT NOT NULL REFERENCES inventories(id), ns TEXT NOT NULL, json TEXT NOT NULL, UNIQUE(inventoryId, ns));
+        PRAGMA user_version = 2;
+      `);
+      const d = draft();
+      const unit = item();
+      sqlite.prepare("INSERT INTO inventories(id,owner,title,location,startedAt,completedAt,catalogVersion,state) VALUES (?,?,?,?,?,?,?,'queued')")
+        .run(d.id, d.owner, d.title, d.location, d.startedAt, unit.capturedAt, d.catalogVersion);
+      sqlite.prepare('INSERT INTO items(id,inventoryId,ns,json) VALUES (?,?,?,?)').run(unit.id, d.id, unit.ns, JSON.stringify(unit));
+      await repository.initialize();
+      expect(sqlite.prepare('PRAGMA user_version').get()?.user_version).toBe(3);
+      expect((await repository.get(d.owner, d.id)).recipient).toBeUndefined();
+      expect(await repository.defaultRecipient(d.owner)).toBe(DEFAULT_RECIPIENT);
+      const { delivery, prepared } = recordingDelivery();
+      await new Outbox(repository, delivery).sync(d.owner);
+      expect(prepared).toEqual([DEFAULT_RECIPIENT]);
+      expect((await repository.get(d.owner, d.id)).state).toBe('sent');
     } finally { sqlite.close(); }
   });
 });

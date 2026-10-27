@@ -5,11 +5,17 @@ import { organizationSchema } from './company';
 z.config(z.locales.ptBR());
 
 export const COMPANY_DOMAIN = 'ytechsolucoes.com';
-export const RECIPIENT = 'lorena@ytechsolucoes.com';
+// Used until the account chooses another default in Conta e dados.
+export const DEFAULT_RECIPIENT = 'lorena@ytechsolucoes.com';
 export const MAX_ITEMS = 10000;
 export const MAX_PAYLOAD_BYTES = 8 * 1024 * 1024;
 export const MAX_BACKUP_BYTES = 32 * 1024 * 1024;
 export const MAX_BACKUP_INVENTORIES = 1000;
+
+// A single address typed by the user. It goes straight into the To header, so only a plain address is accepted:
+// no names, lists, spaces or line breaks.
+export const recipientSchema = z.string().trim().toLowerCase().max(254, 'E-mail longo demais.')
+  .pipe(z.email('Informe um e-mail válido, no formato nome@empresa.com.'));
 
 export function utf8ByteLength(text: string): number {
   let bytes = 0;

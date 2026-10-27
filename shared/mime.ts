@@ -1,4 +1,4 @@
-import { RECIPIENT, type Inventory, type User } from './model';
+import { recipientSchema, type Inventory, type User } from './model';
 import { formatCnpj, organizationKindLabel } from './company';
 import { formatDateTime } from './report';
 
@@ -106,15 +106,17 @@ export function inventoryMailText(inventory: Inventory, user: User, attachments:
   ].join('\n');
 }
 
-export function buildInventoryMessage(input: { inventory: Inventory; user: User; attachments: MailAttachment[] }): string {
+export function buildInventoryMessage(input: { inventory: Inventory; user: User; recipient: string; attachments: MailAttachment[] }): string {
   const { inventory, user, attachments } = input;
   if (!/^[^\s@<>"]+@[^\s@<>"]+$/.test(user.email)) throw new Error('E-mail do responsável inválido.');
+  const recipient = recipientSchema.safeParse(input.recipient);
+  if (!recipient.success) throw new Error(`Destinatário inválido: ${input.recipient.slice(0, 254)}`);
   const senderName = [...user.name].map(character => (character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127 ? ' ' : character))
     .join('').replace(/ {2,}/g, ' ').trim() || user.email;
   const boundary = `ytech-${inventory.id}`;
   const lines = [
     `From: ${encodeDisplayName(senderName)} <${user.email}>`,
-    `To: ${RECIPIENT}`,
+    `To: ${recipient.data}`,
     `Subject: ${encodeHeaderText(`Inventário Ytech: ${inventory.title}`)}`,
     `Message-ID: <inventory-${inventory.id}@ytechsolucoes.com>`,
     'MIME-Version: 1.0',

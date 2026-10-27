@@ -1,10 +1,10 @@
-import { errorMessage, RECIPIENT, type Inventory } from '../shared/model';
+import { DEFAULT_RECIPIENT, errorMessage, type Inventory } from '../shared/model';
 import type { TransmitResult } from '../shared/gmail';
 import type { DeliveryOutcome, InventoryRepository } from './repository';
 
 export interface Delivery {
   // Builds the whole message on the device; a failure here means nothing was sent.
-  prepare(owner: string, inventory: Inventory): Promise<{ raw: string; warnings: string[] }>;
+  prepare(owner: string, inventory: Inventory, recipient: string): Promise<{ raw: string; warnings: string[] }>;
   accessToken(owner: string, refresh: boolean): Promise<string>;
   transmit(raw: string, accessToken: string): Promise<TransmitResult>;
 }
@@ -35,9 +35,11 @@ export class Outbox {
     const problems: string[] = [];
     let changed = false;
     for (const draft of pending) {
+      // Inventories concluded before the recipient could be chosen go to the original default.
+      const recipient = draft.recipient ?? DEFAULT_RECIPIENT;
       let prepared: { raw: string; warnings: string[] };
       try {
-        prepared = await this.delivery.prepare(owner, await this.repository.payload(owner, draft.id));
+        prepared = await this.delivery.prepare(owner, await this.repository.payload(owner, draft.id), recipient);
       } catch (error) {
         // Without a screen the PDF renderer, for example, may be unavailable; the foreground attempt decides.
         if (background) continue;
@@ -58,7 +60,8 @@ export class Outbox {
         await this.repository.saveError(owner, draft.id, errorMessage(error));
         throw error;
       }
-      if (!await this.repository.markSending(owner, draft.id)) continue;
+      // Fails when the inventory was deleted or its recipient changed while the message was built; the next sync uses the new one.
+      if (!await this.repository.markSending(owner, draft.id, recipient)) continue;
       changed = true;
       let result = await this.transmit(prepared.raw, token);
       if (result.status === 'unauthorized') {
@@ -69,7 +72,7 @@ export class Outbox {
         }
       }
       const outcome: DeliveryOutcome = result.status === 'sent'
-        ? { status: 'sent', message: `Enviado pelo seu Gmail para ${RECIPIENT}. ID da mensagem: ${result.messageId}.`, warnings: prepared.warnings }
+        ? { status: 'sent', message: `Enviado pelo seu Gmail para ${recipient}. ID da mensagem: ${result.messageId}.`, warnings: prepared.warnings }
         : result.status === 'unauthorized'
           ? { status: 'failed', message: 'O Google recusou a autorização de envio. Entre novamente com sua conta e tente de novo.', warnings: prepared.warnings }
           : { status: result.status, message: result.message, warnings: prepared.warnings };

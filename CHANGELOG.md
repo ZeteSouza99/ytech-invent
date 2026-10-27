@@ -10,9 +10,15 @@ Exportação simples (substitui o modelo TOTVS):
 - A planilha Excel funciona também para todos os inventários da conta de uma vez.
 - O CSV usa `;` como separador, o padrão do Excel em português.
 
+Destinatário:
+
+- O e-mail que recebe os inventários pode ser trocado: um padrão por conta em **Conta e dados** (inicialmente `lorena@ytechsolucoes.com`) e, em **Revisar e concluir**, outro e-mail digitado só para aquele inventário.
+- O destinatário fica gravado com o inventário na conclusão e pode ser corrigido enquanto o envio está na fila ou depois de uma falha. Se mudar durante a montagem da mensagem, aquela tentativa não é transmitida e a próxima usa o novo endereço.
+- Só um endereço simples é aceito (sem nome, lista ou quebra de linha), validado também na montagem do e-mail. Inventários concluídos em versões anteriores seguem para o destino original.
+
 Leitor:
 
-- PN já contado pela conta neste aparelho é aceito na primeira foto, inclusive quando o OCR erra um caractere (corrigido para o PN conhecido). Um PN salvo durante a leitura já vale para a unidade seguinte.
+- PN já contado pela conta neste aparelho é aceito na primeira foto quando identificado pelo código, pelo texto ou pelo texto com letras que o OCR confunde (O/0, Z/2). Um texto a um caractere de distância é sugerido como o PN contado, mas pede conferência com a etiqueta, porque pode ser um modelo irmão. Um PN salvo durante a leitura já vale para a unidade seguinte.
 
 Segurança e dados:
 
@@ -33,6 +39,7 @@ Funcionalidades:
 Correções:
 
 - Nome do remetente com vírgula ou outros sinais de endereço passa a ir entre aspas no cabeçalho `From`.
+- "Exportar todos" deixa de fora, com aviso, um inventário que não pode ser lido, em vez de cancelar a exportação inteira.
 
 Projeto:
 

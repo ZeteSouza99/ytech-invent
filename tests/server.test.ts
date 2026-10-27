@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import type { TokenPayload } from 'google-auth-library';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MAX_PAYLOAD_BYTES, RECIPIENT, receiptSchema, type Inventory, type User } from '../shared/model.ts';
+import { MAX_PAYLOAD_BYTES, DEFAULT_RECIPIENT, receiptSchema, type Inventory, type User } from '../shared/model.ts';
 import { createApp, type WorkbookService } from '../server/app.ts';
 import { readConfig } from '../server/config.ts';
 import { classifySmtpError, createSmtpMailer, type Mailer } from '../server/mailer.ts';
@@ -347,7 +347,7 @@ describe('adaptador SMTP sem qualquer conexão real', () => {
   });
 
   it('fixa envelope/recipient/from, replyTo verificado e exige TLS', async () => {
-    const sendMail = vi.fn().mockResolvedValue({ accepted: [RECIPIENT], rejected: [] });
+    const sendMail = vi.fn().mockResolvedValue({ accepted: [DEFAULT_RECIPIENT], rejected: [] });
     const close = vi.fn();
     const transport = vi.spyOn(nodemailer, 'createTransport')
       .mockReturnValue({ sendMail, close } as unknown as ReturnType<typeof nodemailer.createTransport>);
@@ -361,11 +361,11 @@ describe('adaptador SMTP sem qualquer conexão real', () => {
       secure: false, requireTLS: true, disableFileAccess: true, disableUrlAccess: true,
     }));
     expect(sendMail).toHaveBeenCalledWith(expect.objectContaining({
-      from: 'inventario@ytechsolucoes.com', to: RECIPIENT,
-      envelope: { from: 'inventario@ytechsolucoes.com', to: [RECIPIENT] },
+      from: 'inventario@ytechsolucoes.com', to: DEFAULT_RECIPIENT,
+      envelope: { from: 'inventario@ytechsolucoes.com', to: [DEFAULT_RECIPIENT] },
       replyTo: { name: user.name, address: user.email }, attachments: request.attachments,
     }));
-    sendMail.mockResolvedValueOnce({ accepted: [], rejected: [RECIPIENT] });
+    sendMail.mockResolvedValueOnce({ accepted: [], rejected: [DEFAULT_RECIPIENT] });
     expect(await smtp.send(request)).toBe('failed');
     sendMail.mockResolvedValueOnce({ accepted: [], rejected: [] });
     expect(await smtp.send(request)).toBe('uncertain');

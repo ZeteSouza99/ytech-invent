@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import { errorMessage, type Catalog, type InventoryItem, type User } from '../../shared/model';
+import { DEFAULT_RECIPIENT, errorMessage, type Catalog, type InventoryItem, type User } from '../../shared/model';
 import { disableBackgroundSending, enableBackgroundSending } from '../backgroundSend';
 import { importCatalog, loadCatalog, restoreBundledCatalog, type CatalogSource, type LoadedCatalog } from '../catalog';
 import { login, logout, restoreSession } from '../google';
@@ -207,6 +207,31 @@ export function useInventoryData(repository: InventoryRepository | null, owner: 
 
   const current = inventories.find(inventory => inventory.id === selectedId);
   return { inventories, items, selectedId, current, select, reloadList, reloadItems, changeItems, forgetInventory };
+}
+
+// Address that new inventories are sent to, chosen per account in Conta e dados.
+export function useDefaultRecipient(repository: InventoryRepository | null, owner: string | null, onError: (message: string) => void) {
+  const [recipient, setRecipient] = useState(DEFAULT_RECIPIENT);
+  const ownerRef = useRef(owner);
+  ownerRef.current = owner;
+  const errorRef = useRef(onError);
+  errorRef.current = onError;
+
+  useEffect(() => {
+    setRecipient(DEFAULT_RECIPIENT);
+    if (!repository || !owner) return;
+    repository.defaultRecipient(owner)
+      .then(saved => { if (ownerRef.current === owner) setRecipient(saved); })
+      .catch(failure => errorRef.current(errorMessage(failure)));
+  }, [repository, owner]);
+
+  const save = useCallback(async (value: string) => {
+    if (!repository || !owner) throw new Error('Conta não disponível.');
+    const saved = await repository.setDefaultRecipient(owner, value);
+    if (ownerRef.current === owner) setRecipient(saved);
+  }, [repository, owner]);
+
+  return { recipient, save };
 }
 
 // Part numbers already counted by this account on this device. The reader accepts them at the first reading.

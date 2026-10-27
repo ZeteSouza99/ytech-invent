@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { companyUser } from '../shared/account';
 import { GMAIL_SEND_SCOPE, transmitGmail } from '../shared/gmail';
 import { buildInventoryMessage, encodeBase64, encodeDisplayName, encodeHeaderText, utf8Encode } from '../shared/mime';
-import { RECIPIENT, type Inventory, type User } from '../shared/model';
+import { DEFAULT_RECIPIENT, type Inventory, type User } from '../shared/model';
 import { createWorkbookService } from '../shared/workbook';
 import { createGmailDelivery } from '../src/delivery';
 
@@ -50,11 +50,11 @@ describe('codificação do e-mail', () => {
     const pdfBytes = utf8Encode('%PDF-1.7\nfixture-do-renderizador-nativo');
     const reportPdf = vi.fn(async () => ({ filename: 'Inventario.pdf', mimeType: 'application/pdf', content: pdfBytes }));
     const delivery = createGmailDelivery({ workbook: async () => service, reportPdf, user: () => user, accessToken: async () => 'token' });
-    const { raw, warnings } = await delivery.prepare(user.sub, sample);
+    const { raw, warnings } = await delivery.prepare(user.sub, sample, ' Compras.Cliente@Empresa.com.br ');
     expect(warnings).toEqual([]);
     expect(reportPdf).toHaveBeenCalledExactlyOnceWith(sample, service.catalog);
     const { parts, headers } = parse(raw);
-    expect(headers.get('To')).toBe(RECIPIENT);
+    expect(headers.get('To')).toBe('compras.cliente@empresa.com.br');
     expect(parts).toHaveLength(3);
     const body = parts[0]!.content.toString('utf8');
     expect(body).toContain('- Inventario.pdf: relatório');
@@ -82,7 +82,7 @@ describe('codificação do e-mail', () => {
       workbook: async () => service, user: () => user, accessToken: async () => 'token',
       reportPdf: async () => { throw new Error('Falha ao gerar PDF'); },
     });
-    await expect(delivery.prepare(user.sub, inventory())).rejects.toThrow('Falha ao gerar PDF');
+    await expect(delivery.prepare(user.sub, inventory(), DEFAULT_RECIPIENT)).rejects.toThrow('Falha ao gerar PDF');
   });
 
   it.each([
@@ -94,7 +94,7 @@ describe('codificação do e-mail', () => {
       workbook: async () => service, user: () => user, accessToken: async () => 'token',
       reportPdf: async () => ({ filename: 'Inventario.pdf', ...pdf }),
     });
-    await expect(delivery.prepare(user.sub, inventory())).rejects.toThrow('relatório PDF completo');
+    await expect(delivery.prepare(user.sub, inventory(), DEFAULT_RECIPIENT)).rejects.toThrow('relatório PDF completo');
   });
 
   it('cópia parcial é identificada no nome da planilha', async () => {
@@ -130,11 +130,11 @@ describe('codificação do e-mail', () => {
     expect(() => encodeDisplayName('Ana\r\nBcc: x@example.com')).toThrow('quebra de linha');
   });
 
-  it('monta remetente, destinatário fixo, corpo e anexos sem perder bytes', () => {
+  it('monta remetente, destinatário, corpo e anexos sem perder bytes', () => {
     const content = Uint8Array.from({ length: 3000 }, (_, index) => index % 256);
     const sample = inventory();
     const raw = buildInventoryMessage({
-      inventory: sample, user: { ...user, name: 'Ana\r\nBcc: x@example.com' },
+      inventory: sample, user: { ...user, name: 'Ana\r\nBcc: x@example.com' }, recipient: DEFAULT_RECIPIENT,
       attachments: [{ filename: 'Inventario.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', content }],
     });
     expect(raw.split('\r\n').every(line => line.length <= 998)).toBe(true);
@@ -143,7 +143,7 @@ describe('codificação do e-mail', () => {
     // The display name keeps the injected text harmless: no new header, and quoted so ':' and '@' are not address syntax.
     expect(decodeHeader(headers.get('From')!)).toBe(`"Ana Bcc: x@example.com" <${user.email}>`);
     expect(headers.has('Bcc')).toBe(false);
-    expect(headers.get('To')).toBe(RECIPIENT);
+    expect(headers.get('To')).toBe(DEFAULT_RECIPIENT);
     expect(decodeHeader(headers.get('Subject')!)).toBe(`Inventário Ytech: ${sample.title}`);
     expect(headers.get('Message-ID')).toBe(`<inventory-${sample.id}@ytechsolucoes.com>`);
     const body = parts[0]!.content.toString('utf8');
@@ -152,8 +152,23 @@ describe('codificação do e-mail', () => {
     expect(body).toContain('Quantidade por PN:\n- EC300K-1SA2AA6: 1');
     expect(parts[1]!.head).toContain('filename="Inventario.xlsx"');
     expect(Uint8Array.from(parts[1]!.content)).toEqual(content);
-    expect(() => buildInventoryMessage({ inventory: sample, user, attachments: [{ filename: '../x.xlsx', mimeType: 'a/b', content }] }))
+    expect(() => buildInventoryMessage({ inventory: sample, user, recipient: DEFAULT_RECIPIENT, attachments: [{ filename: '../x.xlsx', mimeType: 'a/b', content }] }))
       .toThrow('Nome de anexo inválido');
+  });
+
+  // The address typed on the device goes straight into the To header: only one plain address passes.
+  it.each([
+    'lorena@ytechsolucoes.com\r\nBcc: invasor@example.com',
+    'lorena@ytechsolucoes.com\nBcc: invasor@example.com',
+    'lorena@ytechsolucoes.com, invasor@example.com',
+    'Lorena <lorena@ytechsolucoes.com>',
+    'lorena@ytechsolucoes',
+    '',
+    `${'a'.repeat(250)}@ytechsolucoes.com`,
+  ])('recusa destinatário que não é um único endereço: %j', recipient => {
+    const content = utf8Encode('x');
+    expect(() => buildInventoryMessage({ inventory: inventory(), user, recipient, attachments: [{ filename: 'Inventario.xlsx', mimeType: 'a/b', content }] }))
+      .toThrow('Destinatário inválido');
   });
 
   it('leva a planilha real no e-mail e ela abre no Excel', async () => {
@@ -162,7 +177,7 @@ describe('codificação do e-mail', () => {
     const sample = inventory();
     const spreadsheet = await service.spreadsheet([{ inventory: sample, partial: false }]);
     expect(spreadsheet.content instanceof Uint8Array && !Buffer.isBuffer(spreadsheet.content)).toBe(true);
-    const { parts } = parse(buildInventoryMessage({ inventory: sample, user, attachments: [spreadsheet] }));
+    const { parts } = parse(buildInventoryMessage({ inventory: sample, user, recipient: DEFAULT_RECIPIENT, attachments: [spreadsheet] }));
     expect(parts).toHaveLength(2);
     const report = new ExcelJS.Workbook();
     await report.xlsx.load(Uint8Array.from(parts[1]!.content).buffer);

@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { organizationSchema, type Organization } from '../shared/company';
 import {
-  errorMessage, inventorySchema, inventoryTextSchema, itemSchema, MAX_BACKUP_INVENTORIES, MAX_ITEMS, MAX_PAYLOAD_BYTES,
-  partNumberSchema, receiptSchema, utf8ByteLength, type Inventory, type InventoryItem, type Receipt,
+  DEFAULT_RECIPIENT, errorMessage, inventorySchema, inventoryTextSchema, itemSchema, MAX_BACKUP_INVENTORIES, MAX_ITEMS, MAX_PAYLOAD_BYTES,
+  partNumberSchema, receiptSchema, recipientSchema, utf8ByteLength, type Inventory, type InventoryItem, type Receipt,
 } from '../shared/model';
 
 type SqlValue = string | number | null;
@@ -28,6 +28,8 @@ export type Draft = {
   lastError: string;
   receipt: string | null;
   organization?: Organization;
+  // E-mail chosen when the inventory was concluded; absent for inventories concluded before 1.1.2.
+  recipient?: string;
   // Present when stored data can no longer be read; the inventory stays visible so it can be repaired or deleted.
   problem?: string;
 };
@@ -48,7 +50,7 @@ const rowSchema = z.object({
   id: z.string().min(1).max(64), owner: z.string().min(1), title: storedLabelSchema, location: storedLabelSchema,
   startedAt: z.iso.datetime(), completedAt: z.iso.datetime().nullable(), catalogVersion: z.string().min(1),
   state: z.enum(INVENTORY_STATES), lastError: z.string(), receipt: z.string().nullable(),
-  organization: z.string().nullable().optional(),
+  organization: z.string().nullable().optional(), recipient: z.string().nullable().optional(),
 });
 const storedItemSchema = z.object({
   id: z.string().min(1).max(64), pn: z.string().min(1).max(120), ns: z.string().min(1).max(80),
@@ -62,6 +64,7 @@ const newDraftSchema = z.object({ id: z.uuid(), owner: z.string().min(1), starte
 const ORGANIZATION_PROBLEM = 'A identificação da empresa salva neste inventário está ilegível. Edite a identificação antes de concluir ou exportar; as unidades estão preservadas.';
 const DAMAGED_PROBLEM = 'Os dados deste inventário não puderam ser lidos neste aparelho. Nada foi apagado; exporte as demais coletas e procure o suporte antes de excluí-lo.';
 const CLOCK_BEHIND = 'A data e a hora do aparelho estão antes do início desta coleta. Corrija o relógio do aparelho e salve de novo; esta unidade não foi gravada.';
+const RECIPIENT_SETTING = 'recipient';
 
 // Applied in order; PRAGMA user_version records how many already ran. Never edit a released step: append a new one.
 const MIGRATIONS: ((db: LocalDatabase) => Promise<void>)[] = [
@@ -87,6 +90,13 @@ const MIGRATIONS: ((db: LocalDatabase) => Promise<void>)[] = [
       await db.execAsync('ALTER TABLE inventories ADD COLUMN organization TEXT');
     }
   },
+  // Recipient chosen when concluding, and per-account settings such as the default recipient.
+  async db => {
+    await db.execAsync(`
+      ALTER TABLE inventories ADD COLUMN recipient TEXT;
+      CREATE TABLE IF NOT EXISTS settings (owner TEXT NOT NULL, name TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (owner, name));
+    `);
+  },
 ];
 
 function parseOrganization(text: string): Organization | null {
@@ -99,8 +109,8 @@ function parseOrganization(text: string): Organization | null {
 }
 
 function toDraft(row: unknown): Draft {
-  const { organization: stored, ...fields } = rowSchema.parse(row);
-  const draft: Draft = fields;
+  const { organization: stored, recipient, ...fields } = rowSchema.parse(row);
+  const draft: Draft = { ...fields, ...(recipient ? { recipient } : {}) };
   if (stored) {
     const organization = parseOrganization(stored);
     if (organization) draft.organization = organization;
@@ -343,12 +353,41 @@ export class InventoryRepository {
     }));
   }
 
-  finish(owner: string, id: string): Promise<void> {
+  // The recipient is fixed with the inventory, so a later change of the default never redirects a queued send.
+  finish(owner: string, id: string, recipient: string = DEFAULT_RECIPIENT): Promise<void> {
     return this.serialize(async () => {
+      const to = recipientSchema.parse(recipient);
       const draft = await this.get(owner, id);
       if (draft.state !== 'draft') throw new Error('Este inventário já está concluído.');
       const inventory = await this.validated(draft, null);
-      await this.db.runAsync("UPDATE inventories SET completedAt=?,state='queued',lastError='' WHERE id=? AND owner=? AND state='draft'", inventory.completedAt, id, owner);
+      await this.db.runAsync("UPDATE inventories SET completedAt=?,state='queued',lastError='',recipient=? WHERE id=? AND owner=? AND state='draft'",
+        inventory.completedAt, to, id, owner);
+    });
+  }
+
+  // Allowed while nothing was transmitted: waiting in the queue or after a refused send.
+  updateRecipient(owner: string, id: string, recipient: string): Promise<void> {
+    return this.serialize(async () => {
+      const to = recipientSchema.parse(recipient);
+      await this.get(owner, id);
+      const result = await this.db.runAsync("UPDATE inventories SET recipient=? WHERE id=? AND owner=? AND state IN ('queued','failed')", to, id, owner);
+      if (!result.changes) throw new Error('O destinatário só pode ser alterado enquanto o envio está pendente ou depois de uma falha.');
+    });
+  }
+
+  async defaultRecipient(owner: string): Promise<string> {
+    const row = await this.db.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE owner=? AND name=?', owner, RECIPIENT_SETTING);
+    const parsed = recipientSchema.safeParse(row?.value);
+    return parsed.success ? parsed.data : DEFAULT_RECIPIENT;
+  }
+
+  setDefaultRecipient(owner: string, recipient: string): Promise<string> {
+    return this.serialize(async () => {
+      if (!owner) throw new Error('Conta não disponível.');
+      const to = recipientSchema.parse(recipient);
+      await this.db.runAsync('INSERT INTO settings(owner,name,value) VALUES (?,?,?) ON CONFLICT(owner,name) DO UPDATE SET value=excluded.value',
+        owner, RECIPIENT_SETTING, to);
+      return to;
     });
   }
 
@@ -386,10 +425,14 @@ export class InventoryRepository {
   }
 
   // Persisted before any network call, so an interrupted send is never retried silently.
-  markSending(owner: string, id: string): Promise<boolean> {
+  // With `recipient`, the claim also fails when the recipient changed after the message was built.
+  markSending(owner: string, id: string, recipient?: string): Promise<boolean> {
     return this.serialize(async () => {
-      const result = await this.db.runAsync("UPDATE inventories SET state='sending',lastError='' WHERE id=? AND owner=? AND state='queued'", id, owner);
-      // A queued inventory may have been deleted while its email was prepared.
+      const result = recipient === undefined
+        ? await this.db.runAsync("UPDATE inventories SET state='sending',lastError='' WHERE id=? AND owner=? AND state='queued'", id, owner)
+        : await this.db.runAsync("UPDATE inventories SET state='sending',lastError='' WHERE id=? AND owner=? AND state='queued' AND COALESCE(recipient,?)=?",
+          id, owner, DEFAULT_RECIPIENT, recipient);
+      // A queued inventory may have been deleted or redirected while its email was prepared.
       // Only the caller that claims it may transmit anything.
       return result.changes > 0;
     });

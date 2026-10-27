@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { RECIPIENT, type Inventory, type User } from '../shared/model.ts';
+import { DEFAULT_RECIPIENT, type Inventory, type User } from '../shared/model.ts';
 import type { ServerConfig } from './config.ts';
 
 export type Attachment = { filename: string; content: Buffer };
@@ -39,8 +39,8 @@ export function createSmtpMailer(config: ServerConfig['smtp']): { send: Mailer; 
       try {
         const result = await transport.sendMail({
           from: config.from,
-          to: RECIPIENT,
-          envelope: { from: config.from, to: [RECIPIENT] },
+          to: DEFAULT_RECIPIENT,
+          envelope: { from: config.from, to: [DEFAULT_RECIPIENT] },
           replyTo: { name: user.name, address: user.email },
           subject: `Inventário Ytech: ${inventory.title}`,
           text: [
@@ -56,9 +56,9 @@ export function createSmtpMailer(config: ServerConfig['smtp']): { send: Mailer; 
           attachments,
           messageId: `<inventory-${inventory.id}@ytechsolucoes.com>`,
         });
-        const accepted = result.accepted.some(address => address.toLowerCase() === RECIPIENT);
+        const accepted = result.accepted.some(address => address.toLowerCase() === DEFAULT_RECIPIENT);
         if (accepted) return 'sent';
-        return result.rejected.some(address => address.toLowerCase() === RECIPIENT)
+        return result.rejected.some(address => address.toLowerCase() === DEFAULT_RECIPIENT)
           ? 'failed' : 'uncertain';
       } catch (error) {
         return classifySmtpError(error);

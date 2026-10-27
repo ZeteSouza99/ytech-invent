@@ -12,7 +12,7 @@ export function createGmailDelivery(options: {
   accessToken: (owner: string, refresh: boolean) => Promise<string>;
 }): Delivery {
   return {
-    async prepare(owner, inventory) {
+    async prepare(owner, inventory, recipient) {
       const user = await options.user(owner);
       if (!user) throw new Error('Entre com a conta responsável por este inventário para enviá-lo.');
       const service = await options.workbook();
@@ -23,7 +23,7 @@ export function createGmailDelivery(options: {
         throw new Error('Não foi possível gerar o relatório PDF completo. Tente o envio novamente.');
       }
       const spreadsheet = await service.spreadsheet([{ inventory, partial: false }]);
-      return { raw: buildInventoryMessage({ inventory, user, attachments: [pdf, spreadsheet] }), warnings: [] };
+      return { raw: buildInventoryMessage({ inventory, user, recipient, attachments: [pdf, spreadsheet] }), warnings: [] };
     },
     accessToken: options.accessToken,
     transmit: (raw, token) => transmitGmail(raw, token),

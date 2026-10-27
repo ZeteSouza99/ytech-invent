@@ -4,13 +4,13 @@ Aplicativo Android para inventário de equipamentos serializados da Ytech. Vers�
 
 ## Como funciona
 
-Tudo acontece no aparelho: os dados ficam num banco local criptografado, o catálogo de produtos vem embutido no APK e o PDF, a planilha Excel e o CSV são gerados no próprio celular. O envio usa a Gmail API com a conta do responsável, para `lorena@ytechsolucoes.com`. O app não depende da API da pasta `server/`.
+Tudo acontece no aparelho: os dados ficam num banco local criptografado, o catálogo de produtos vem embutido no APK e o PDF, a planilha Excel e o CSV são gerados no próprio celular. O envio usa a Gmail API com a conta do responsável, para o e-mail escolhido (padrão `lorena@ytechsolucoes.com`, veja [Destinatário](#destinatário)). O app não depende da API da pasta `server/`.
 
 1. Entrar com a conta Google corporativa `@ytechsolucoes.com` (o primeiro acesso precisa de internet).
 2. Criar uma coleta com nome, localização e empresa (interno ou externo).
 3. Ler a etiqueta ou digitar PN e número de série (NS), conferir e salvar cada unidade.
 4. Buscar por PN, NS ou localização; editar localização e patrimônio de uma unidade ou removê-la.
-5. Abrir **Revisar e concluir**, conferir os totais e concluir.
+5. Abrir **Revisar e concluir**, conferir os totais e o e-mail de destino e concluir.
 6. O envio pelo Gmail acontece com o app aberto e conectado e, quando o Android permite, também em segundo plano.
 
 Cada conta acessa só as próprias coletas. Sair não apaga dados; desinstalar ou limpar os dados do app apaga as coletas. Não há sincronização entre aparelhos.
@@ -22,7 +22,7 @@ Cada conta acessa só as próprias coletas. Sair não apaga dados; desinstalar o
 - Formatos: Code 128, Code 39, Data Matrix e PDF417.
 - PN e NS são associados por rótulos impressos (P/N, S/N), identificadores (1P, S, GS1) e posição na imagem. MAC, IP, datas e quantidades são descartados.
 - Há correção de caracteres parecidos (O/0, S/5) e aproximação ao catálogo. Uma leitura provável só é aceita quando se repete em outra foto; isso não substitui conferir a etiqueta.
-- **PN já contado:** os PN que a conta já salvou neste aparelho, em qualquer inventário, são aceitos na primeira foto, sem esperar confirmação. Isso vale para o código de barras, para o texto depois de "P/N" (inclusive com um caractere lido errado pelo OCR, que é corrigido para o PN conhecido) e para o PN impresso sem rótulo. Um PN salvo durante a leitura passa a valer já na unidade seguinte. O NS lido só pelo texto continua precisando de duas fotos iguais, para evitar dígitos trocados.
+- **PN já contado:** os PN que a conta já salvou neste aparelho, em qualquer inventário, são aceitos na primeira foto quando identificados: pelo código de barras, pelo texto depois de "P/N" (inclusive com letras que o OCR confunde, como O/0 e Z/2) e pelo PN impresso sem rótulo. Um texto a um caractere de distância de um PN contado ainda é sugerido como esse PN, mas pede conferência com a etiqueta e uma segunda foto, porque pode ser um modelo irmão (ZT41142 e ZT41143 diferem só na resolução). Um PN salvo durante a leitura passa a valer já na unidade seguinte. O NS lido só pelo texto continua precisando de duas fotos iguais, para evitar dígitos trocados.
 - Com várias etiquetas na imagem, a central pode ser priorizada; nos casos ambíguos o app pede escolha.
 - "Manter PN" agiliza lotes do mesmo modelo; um PN diferente detectado bloqueia a associação automática.
 - Cada foto é apagada depois da análise, mesmo em erro ou cancelamento. Fotos não são enviadas nem registradas em logs.
@@ -51,9 +51,17 @@ Cada conta acessa só as próprias coletas. Sair não apaga dados; desinstalar o
 - Falhas conhecidas (`failed`) exigem uma nova tentativa explícita.
 - Dois anexos: o relatório em PDF e a planilha Excel descritos em [Exportação](#exportação-e-backup); o corpo do e-mail traz a quantidade por PN. Se o PDF falhar, nada é transmitido.
 
+### Destinatário
+
+- **Padrão da conta:** em **Conta e dados → Destino dos inventários**, digite o e-mail que recebe os inventários e toque em **Salvar destino padrão**. Vale para os próximos inventários desta conta neste aparelho. Sem escolha, o padrão é `lorena@ytechsolucoes.com`; **Voltar para lorena@ytechsolucoes.com** desfaz a troca.
+- **Por inventário:** em **Revisar e concluir**, o campo **Enviar para** vem preenchido com o padrão e pode receber outro e-mail só para aquele inventário. O endereço fica gravado com o inventário na conclusão, então mudar o padrão depois não redireciona envios já na fila.
+- **Correção depois de concluir:** enquanto o envio está na fila ou depois de uma falha (`queued` ou `failed`), o inventário mostra **Alterar destinatário**. Depois que a transmissão começou (`sending`, `sent`, `uncertain`) o destinatário fica fixo. Se o endereço mudar enquanto a mensagem é montada, aquela tentativa não é transmitida e a próxima usa o novo endereço.
+- Aceita um único endereço, sem nome, lista, espaços ou quebras de linha; maiúsculas são convertidas para minúsculas. O endereço é validado de novo ao montar o e-mail.
+- Inventários concluídos antes desta versão seguem para `lorena@ytechsolucoes.com`.
+
 ## Exportação e backup
 
-**Exportar ou compartilhar arquivo** gera PDF, Excel, CSV ou JSON, sem internet e sem alterar o envio pelo Gmail. Salvar usa o seletor de pastas do Android; compartilhar abre os apps instalados. Os três formatos de relatório funcionam para um inventário ou para todos os inventários da conta (em **Conta e dados**).
+**Exportar ou compartilhar arquivo** gera PDF, Excel, CSV ou JSON, sem internet e sem alterar o envio pelo Gmail. Salvar usa o seletor de pastas do Android; compartilhar abre os apps instalados. Os três formatos de relatório funcionam para um inventário ou para todos os inventários da conta (em **Conta e dados**). Ao exportar todos, um inventário que não pode ser lido fica de fora, com aviso, sem impedir a exportação dos demais.
 
 - Colunas (uma linha por unidade, na ordem da leitura): Empresa, CNPJ, Inventário, PN, Descrição, NS, Quantidade, Patrimônio, Localização e Data da leitura. A descrição vem do catálogo; PN fora do catálogo fica sem descrição.
 - PDF: cabeçalho com empresa, CNPJ, tipo, localização, datas e totais; a tabela de unidades; e a quantidade por PN com o total.
@@ -130,7 +138,7 @@ A pasta `android/` é gerada pelo Expo e não é versionada. Antes de compilar, 
 - O [CI](.github/workflows/ci.yml) roda typecheck, lint e testes a cada push e pull request.
 - As fotos originais das etiquetas ficam em `tests/fixtures/photos`, só na máquina local (fora do git). O teste que compara o modelo embutido com a planilha original da raiz roda só localmente.
 
-Os testes cobrem contratos, banco e fila, migrações, leitura tolerante, envio em segundo plano, classificação de etiquetas com a saída real do ML Kit (inclusive com PN já contados), PDF, planilha, CSV, e-mail, catálogo importado e uma coleta de 10.000 unidades. Câmera, ML Kit nativo, SQLCipher, WorkManager e geração nativa do PDF só podem ser conferidos no aparelho.
+Os testes cobrem contratos, banco e fila, migrações, leitura tolerante, envio em segundo plano, destinatário editável, classificação de etiquetas com a saída real do ML Kit (inclusive com PN já contados), PDF, planilha, CSV, e-mail, catálogo importado e uma coleta de 10.000 unidades. Câmera, ML Kit nativo, SQLCipher, WorkManager e geração nativa do PDF só podem ser conferidos no aparelho.
 
 ## Conferência no aparelho (pendente)
 
@@ -142,6 +150,7 @@ Itens da 1.1.2 que os testes automatizados não cobrem:
 4. Importar um catálogo SB1, ler um PN que só existe nele e voltar ao embutido.
 5. Editar localização e patrimônio de uma unidade; compartilhar e salvar exportações em PDF, Excel, CSV e JSON, e abrir o CSV no Excel.
 6. Uma coleta grande (milhares de unidades): tempo para salvar cada unidade, concluir e gerar o PDF.
+7. Trocar o destino padrão em **Conta e dados**, concluir um inventário com outro e-mail digitado em **Revisar e concluir** e conferir que cada um chegou ao endereço certo; alterar o destinatário de um inventário na fila (offline) antes do envio.
 
 O usuário informou em 22/10/2026 que login, envio e recebimento reais funcionavam na 1.1.1. Aparelho de referência: Motorola edge 60 fusion, Android 16, tela 1220 × 2712, densidade 450, escala de fonte 0,85.
 

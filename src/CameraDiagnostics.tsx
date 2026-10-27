@@ -3,7 +3,7 @@ import { AppState, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { randomUUID } from 'expo-crypto';
 import { buildInventoryMessage } from '../shared/mime';
-import { errorMessage, type Catalog, type Inventory } from '../shared/model';
+import { DEFAULT_RECIPIENT, errorMessage, type Catalog, type Inventory } from '../shared/model';
 import { loadWorkbookService } from './catalog';
 import { UnitScanner, type ScannedUnit } from './UnitScanner';
 import { Button, Notice, styles } from './ui';
@@ -26,7 +26,7 @@ async function workbookCheck(unit: ScannedUnit | null): Promise<string> {
   };
   const user = { sub: 'diagnostico', email: 'diagnostico@ytechsolucoes.com', name: 'Diagnóstico' };
   const spreadsheet = await service.spreadsheet([{ inventory: sample, partial: false }]);
-  const raw = buildInventoryMessage({ inventory: sample, user, attachments: [spreadsheet] });
+  const raw = buildInventoryMessage({ inventory: sample, user, recipient: DEFAULT_RECIPIENT, attachments: [spreadsheet] });
   return `Catálogo: ${service.catalog.products.length} PN em ${loaded - started} ms.\nPlanilha: ${spreadsheet.filename} ${(spreadsheet.content.length / 1024).toFixed(1)} KB, gerada em ${Date.now() - loaded} ms.\nE-mail montado: ${(raw.length / 1024).toFixed(1)} KB. Nada foi enviado.`;
 }
 

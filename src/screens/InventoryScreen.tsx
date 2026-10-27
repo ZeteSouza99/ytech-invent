@@ -1,17 +1,19 @@
 import { useMemo } from 'react';
 import { FlatList, Text, View } from 'react-native';
 import { formatCnpj, organizationKindLabel } from '../../shared/company';
-import { inventoryTextSchema, receiptSchema, type InventoryItem } from '../../shared/model';
+import { DEFAULT_RECIPIENT, inventoryTextSchema, receiptSchema, type InventoryItem } from '../../shared/model';
 import type { InventorySummary } from '../repository';
 import { Button, colors, Field, Notice, stateLabels, styles } from '../ui';
+import { RecipientEditor } from './RecipientEditor';
 
 export function InventoryScreen({
   inventory, items, search, onSearch, knownPns, busy, online,
-  onEditIdentification, onRetry, onExport, onDelete, onRemoveItem, onEditItem, onScan, onManual, onReview,
+  onEditIdentification, onRetry, onChangeRecipient, onExport, onDelete, onRemoveItem, onEditItem, onScan, onManual, onReview,
 }: {
   inventory: InventorySummary; items: InventoryItem[]; search: string; onSearch: (value: string) => void;
   knownPns: ReadonlySet<string>; busy: boolean; online: boolean;
-  onEditIdentification: () => void; onRetry: (allowUncertain: boolean) => void; onExport: () => void; onDelete: () => void;
+  onEditIdentification: () => void; onRetry: (allowUncertain: boolean) => void; onChangeRecipient: (recipient: string) => void;
+  onExport: () => void; onDelete: () => void;
   onRemoveItem: (item: InventoryItem) => void; onEditItem: (item: InventoryItem) => void;
   onScan: () => void; onManual: () => void; onReview: () => void;
 }) {
@@ -30,6 +32,8 @@ export function InventoryScreen({
   }, [items, search]);
   const pendingProducts = useMemo(() => new Set(items.filter(item => !knownPns.has(item.pn)).map(item => item.pn)).size, [items, knownPns]);
   const draft = inventory.state === 'draft';
+  const recipient = inventory.recipient ?? DEFAULT_RECIPIENT;
+  const recipientEditable = inventory.state === 'queued' || inventory.state === 'failed';
   const invalidIdentification = !inventoryTextSchema.safeParse(inventory.title).success || !inventoryTextSchema.safeParse(inventory.location).success;
 
   return <>
@@ -45,13 +49,15 @@ export function InventoryScreen({
           <Button title="Editar identificação" secondary disabled={busy} onPress={onEditIdentification} />
         </>}
         {!!pendingProducts && <Notice>{pendingProducts} PN fora do catálogo. Entram normalmente no relatório, sem descrição.</Notice>}
+        {!draft && <Text selectable style={styles.body}>Destinatário: {recipient}</Text>}
+        {recipientEditable && <RecipientEditor key={recipient} label="Alterar destinatário" saved={recipient} saveTitle="Salvar novo destinatário" busy={busy} onSave={onChangeRecipient} />}
         {!!inventory.lastError && <Notice error>{inventory.lastError}</Notice>}
         {!!inventory.receipt && !receipt && <Notice error>O comprovante local não pôde ser lido. Confira a pasta Enviados antes de repetir qualquer envio; as unidades continuam salvas.</Notice>}
         {receipt && <Notice>{receipt.message}{'\n'}{receipt.warnings.slice(0, 6).join('\n')}{receipt.warnings.length > 6 ? `\nMais ${receipt.warnings.length - 6} avisos no relatório.` : ''}</Notice>}
         {inventory.state === 'queued' && <Notice>Leituras preservadas. O envio pelo seu Gmail é tentado com este aplicativo aberto e conectado e, quando o Android permitir, também em segundo plano.</Notice>}
         {inventory.state === 'sending' && <Notice>Enviando pelo seu Gmail. Mantenha o aplicativo aberto até concluir.</Notice>}
         {inventory.state === 'uncertain' && <Notice>Não foi possível confirmar se o e-mail saiu. Confira a pasta Enviados do seu Gmail antes de reenviar.</Notice>}
-        {inventory.state === 'sent' && <Text style={styles.body}>A mensagem está na pasta Enviados do seu Gmail. O envio não confirma a leitura pela destinatária.</Text>}
+        {inventory.state === 'sent' && <Text style={styles.body}>A mensagem está na pasta Enviados do seu Gmail. O envio não confirma a leitura pelo destinatário.</Text>}
         {inventory.state === 'failed' && <Button title="Tentar envio novamente" disabled={busy || !online} onPress={() => onRetry(false)} />}
         {inventory.state === 'uncertain' && <Button title="Reenviar após conferir Enviados" secondary disabled={busy || !online} onPress={() => onRetry(true)} />}
         {!!items.length && <Button title="Exportar ou compartilhar arquivo" secondary disabled={busy} onPress={onExport} />}

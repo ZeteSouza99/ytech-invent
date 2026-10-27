@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { ActivityIndicator, Alert, BackHandler, Pressable, StatusBar, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { randomUUID } from 'expo-crypto';
-import { errorMessage, RECIPIENT, type InventoryItem, type Product } from './shared/model';
+import { DEFAULT_RECIPIENT, errorMessage, type InventoryItem, type Product } from './shared/model';
 import { formatCnpj, organizationSchema, YTECH_CNPJ, YTECH_NAME } from './shared/company';
 import { configurationError } from './src/google';
 import { loadWorkbookService } from './src/catalog';
@@ -17,7 +17,7 @@ import { chooseBackup, createDocument, shareDocument } from './src/shareExport';
 import type { ExportEntry, ExportFormat } from './src/exportFormats';
 import { describeFrom } from './shared/report';
 import {
-  useBusyAction, useCatalogState, useConnectivity, useCountedPartNumbers, useInventoryData, useOutboxSync, useServices, useSession,
+  useBusyAction, useCatalogState, useConnectivity, useCountedPartNumbers, useDefaultRecipient, useInventoryData, useOutboxSync, useServices, useSession,
 } from './src/app/hooks';
 import { initialNavigation, navigationReducer, type Screen } from './src/app/navigation';
 import { LoginScreen } from './src/screens/LoginScreen';
@@ -50,6 +50,7 @@ function Application() {
   const owner = user?.sub ?? null;
   const data = useInventoryData(repository, owner, setError);
   const counted = useCountedPartNumbers(repository, owner, setError);
+  const recipient = useDefaultRecipient(repository, owner, setError);
   useOutboxSync(outbox, owner, online, active, data.reloadList, setError);
 
   const [navigation, dispatch] = useReducer(navigationReducer, initialNavigation);
@@ -292,13 +293,13 @@ function Application() {
     ]);
   }
 
-  function confirmFinish() {
+  function confirmFinish(to: string) {
     if (!repository || !owner || !current) return;
     const id = current.id;
-    Alert.alert('Concluir inventário?', `As ${items.length} unidades serão bloqueadas para edição. O app enviará o relatório em PDF e a planilha Excel pelo seu Gmail para ${RECIPIENT} quando houver internet.`, [
+    Alert.alert('Concluir inventário?', `As ${items.length} unidades serão bloqueadas para edição. O app enviará o relatório em PDF e a planilha Excel pelo seu Gmail para ${to} quando houver internet.`, [
       { text: 'Continuar coleta', style: 'cancel' },
       { text: 'Concluir e enviar', onPress: () => { void run(async () => {
-        await repository.finish(owner, id);
+        await repository.finish(owner, id, to);
         dispatch({ type: 'go', screen: 'inventory' });
         await data.reloadList();
         if (online && outbox) {
@@ -334,6 +335,24 @@ function Application() {
     ]);
   }
 
+  // Only while nothing was transmitted; the next send attempt uses the new address.
+  function changeRecipient(to: string) {
+    if (!repository || !owner || !current) return;
+    const id = current.id;
+    void run(async () => {
+      if (session.userRef.current?.sub !== owner) throw new Error('A conta mudou. Abra o inventário novamente.');
+      try { await repository.updateRecipient(owner, id, to); }
+      finally { await data.reloadList(); }
+    });
+  }
+
+  function saveDefaultRecipient(to: string) {
+    void run(async () => {
+      await recipient.save(to);
+      Alert.alert('Destino padrão alterado', `Os próximos inventários serão enviados para ${to}. Os já concluídos mantêm o destinatário escolhido na conclusão.`);
+    });
+  }
+
   function retrySend(allowUncertain: boolean) {
     if (!outbox || !owner || !current) return;
     const id = current.id;
@@ -342,7 +361,7 @@ function Application() {
       finally { await data.reloadList(); }
     }); };
     if (!allowUncertain) { send(); return; }
-    Alert.alert('Reenviar este inventário?', `Abra a pasta Enviados do seu Gmail e procure “Inventário Ytech: ${current.title}”. Se a mensagem já estiver lá, não reenvie: a Lorena receberia uma cópia duplicada.`, [
+    Alert.alert('Reenviar este inventário?', `Abra a pasta Enviados do seu Gmail e procure “Inventário Ytech: ${current.title}”. Se a mensagem já estiver lá, não reenvie: ${current.recipient ?? DEFAULT_RECIPIENT} receberia uma cópia duplicada.`, [
       { text: 'Não reenviar', style: 'cancel' },
       { text: 'Não está em Enviados, reenviar', style: 'destructive', onPress: send },
     ]);
@@ -370,10 +389,12 @@ function Application() {
         onSubmit={values => { void run(() => submitForm(values)); }} onBack={() => go(screen === 'edit' ? 'inventory' : 'home')} />}
       {screen === 'inventory' && current && <InventoryScreen inventory={current} items={items} search={search} onSearch={setSearch}
         knownPns={knownPns} busy={busy} online={online} onEditIdentification={editIdentification} onRetry={retrySend}
+        onChangeRecipient={changeRecipient}
         onExport={() => openExport()} onDelete={confirmDeleteInventory} onRemoveItem={removeItem}
         onEditItem={item => { if (!busyRef.current) dispatch({ type: 'unit', id: item.id }); }}
         onScan={startScanning} onManual={() => openManualForm()} onReview={() => go('review')} />}
-      {screen === 'review' && current && <InventoryReview title={current.title} organization={current.organization} items={items} catalog={catalog} busy={busy} online={online}
+      {screen === 'review' && current && <InventoryReview key={recipient.recipient} title={current.title} organization={current.organization} items={items} catalog={catalog}
+        defaultRecipient={recipient.recipient} busy={busy} online={online}
         onFinish={confirmFinish} onExport={() => openExport()} onBack={() => go('inventory')} />}
       {screen === 'export' && <ExportScreen title={navigation.exportAll ? 'Todos os inventários com unidades desta conta' : current?.title ?? ''}
         partial={navigation.exportAll ? inventories.some(entry => entry.count > 0 && entry.state === 'draft') : current?.state === 'draft'} busy={busy}
@@ -386,7 +407,8 @@ function Application() {
         onSave={saveUnit} onBack={() => go('inventory')} />}
       {screen === 'account' && <AccountScreen user={user} catalog={catalog} catalogSource={catalogState.source} catalogError={catalogState.catalogError}
         catalogWarning={catalogState.catalogWarning} storageWarning={storage.services?.storageWarning ?? null} busy={busy} online={online}
-        hasUnits={inventories.some(entry => entry.count > 0)} onExportAll={() => openExport(true)}
+        hasUnits={inventories.some(entry => entry.count > 0)} defaultRecipient={recipient.recipient} onSaveDefaultRecipient={saveDefaultRecipient}
+        onExportAll={() => openExport(true)}
         onRestoreBackup={() => { void run(importBackup); }} onImportCatalog={() => { void run(importCatalog); }} onRestoreCatalog={restoreCatalog}
         onSignInAgain={() => { void run(signIn); }} onSignOut={signOut} />}
       {screen !== 'capture' && screen !== 'unit' && <View style={[styles.footer, styles.row]}>
