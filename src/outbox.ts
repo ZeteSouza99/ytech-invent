@@ -3,8 +3,9 @@ import type { TransmitResult } from '../shared/gmail';
 import type { DeliveryOutcome, InventoryRepository } from './repository';
 
 export interface Delivery {
-  // Builds the whole message on the device; a failure here means nothing was sent.
-  prepare(owner: string, inventory: Inventory, recipient: string): Promise<{ raw: string; warnings: string[] }>;
+  // Builds the whole message on the device; a failure here means nothing was sent. `resend` counts the times an
+  // inventory already sent was sent again, so each resend gets its own message identifier.
+  prepare(owner: string, inventory: Inventory, recipient: string, resend?: number): Promise<{ raw: string; warnings: string[] }>;
   accessToken(owner: string, refresh: boolean): Promise<string>;
   transmit(raw: string, accessToken: string): Promise<TransmitResult>;
 }
@@ -39,7 +40,7 @@ export class Outbox {
       const recipient = draft.recipient ?? DEFAULT_RECIPIENT;
       let prepared: { raw: string; warnings: string[] };
       try {
-        prepared = await this.delivery.prepare(owner, await this.repository.payload(owner, draft.id), recipient);
+        prepared = await this.delivery.prepare(owner, await this.repository.payload(owner, draft.id), recipient, draft.resends ?? 0);
       } catch (error) {
         // Without a screen the PDF renderer, for example, may be unavailable; the foreground attempt decides.
         if (background) continue;
@@ -72,7 +73,7 @@ export class Outbox {
         }
       }
       const outcome: DeliveryOutcome = result.status === 'sent'
-        ? { status: 'sent', message: `Enviado pelo seu Gmail para ${recipient}. ID da mensagem: ${result.messageId}.`, warnings: prepared.warnings }
+        ? { status: 'sent', message: `${draft.resends ? 'Reenviado' : 'Enviado'} pelo seu Gmail para ${recipient}. ID da mensagem: ${result.messageId}.`, warnings: prepared.warnings }
         : result.status === 'unauthorized'
           ? { status: 'failed', message: 'O Google recusou a autorização de envio. Entre novamente com sua conta e tente de novo.', warnings: prepared.warnings }
           : { status: result.status, message: result.message, warnings: prepared.warnings };

@@ -56,7 +56,8 @@ Cada conta acessa só as próprias coletas. Sair não apaga dados; desinstalar o
 
 - **Padrão da conta:** em **Conta e dados → Destino dos inventários**, digite o e-mail que recebe os inventários e toque em **Salvar destino padrão**. Vale para os próximos inventários desta conta neste aparelho. Sem escolha, o padrão é `lorena@ytechsolucoes.com`; **Voltar para lorena@ytechsolucoes.com** desfaz a troca.
 - **Por inventário:** em **Revisar e concluir**, o campo **Enviar para** vem preenchido com o padrão e pode receber outro e-mail só para aquele inventário. O endereço fica gravado com o inventário na conclusão, então mudar o padrão depois não redireciona envios já na fila.
-- **Correção depois de concluir:** enquanto o envio está na fila ou depois de uma falha (`queued` ou `failed`), o inventário mostra **Alterar destinatário**. Depois que a transmissão começou (`sending`, `sent`, `uncertain`) o destinatário fica fixo. Se o endereço mudar enquanto a mensagem é montada, aquela tentativa não é transmitida e a próxima usa o novo endereço.
+- **Correção depois de concluir:** enquanto o envio está na fila ou depois de uma falha (`queued` ou `failed`), o inventário mostra **Alterar destinatário**. Depois que a transmissão começou (`sending`, `sent`, `uncertain`) o destinatário fica fixo. Se o endereço mudar enquanto a mensagem é montada, aquela tentativa não é transmitida e a próxima usa o novo endereço. Para mandar a outro endereço depois do envio, use **Reenviar e-mail**.
+- **Reenvio:** um inventário já enviado (`sent`) mostra o campo **Reenviar para**, preenchido com o último destinatário, e o botão **Reenviar e-mail**, para o mesmo endereço ou outro digitado na hora. O inventário volta para a fila e sai como uma nova mensagem, com o mesmo PDF e a mesma planilha e um Message-ID próprio, para o Gmail não tratá-la como duplicata da anterior. Sem internet, fica na fila até a conexão voltar. As unidades continuam bloqueadas, e a tela passa a mostrar o destinatário e o comprovante do último envio.
 - Aceita um único endereço, sem nome, lista, espaços ou quebras de linha; maiúsculas são convertidas para minúsculas. O endereço é validado de novo ao montar o e-mail.
 - Inventários concluídos antes desta versão seguem para `lorena@ytechsolucoes.com`.
 
@@ -139,7 +140,7 @@ A pasta `android/` é gerada pelo Expo e não é versionada. Antes de compilar, 
 - O [CI](.github/workflows/ci.yml) roda typecheck, lint e testes a cada push e pull request.
 - As fotos originais das etiquetas ficam em `tests/fixtures/photos`, só na máquina local (fora do git). O teste que compara o modelo embutido com a planilha original da raiz roda só localmente.
 
-Os testes cobrem contratos, banco e fila, migrações, leitura tolerante, envio em segundo plano, destinatário editável, classificação de etiquetas com a saída real do ML Kit (inclusive com PN já contados), PDF, planilha, CSV, e-mail, catálogo importado e uma coleta de 10.000 unidades. Câmera, ML Kit nativo, SQLCipher, WorkManager e geração nativa do PDF só podem ser conferidos no aparelho.
+Os testes cobrem contratos, banco e fila, migrações, leitura tolerante, envio em segundo plano, destinatário editável, reenvio, classificação de etiquetas com a saída real do ML Kit (inclusive com PN já contados), PDF, planilha, CSV, e-mail, catálogo importado e uma coleta de 10.000 unidades. Câmera, ML Kit nativo, SQLCipher, WorkManager e geração nativa do PDF só podem ser conferidos no aparelho.
 
 ## Conferência no aparelho (pendente)
 
@@ -152,6 +153,7 @@ Itens da 1.1.2 que os testes automatizados não cobrem:
 5. Editar localização e patrimônio de uma unidade; compartilhar e salvar exportações em PDF, Excel, CSV e JSON, e abrir o CSV no Excel.
 6. Uma coleta grande (milhares de unidades): tempo para salvar cada unidade, concluir e gerar o PDF.
 7. Trocar o destino padrão em **Conta e dados**, concluir um inventário com outro e-mail digitado em **Revisar e concluir** e conferir que cada um chegou ao endereço certo; alterar o destinatário de um inventário na fila (offline) antes do envio.
+8. Reenviar um inventário já enviado para o mesmo e-mail e para outro, e conferir que cada reenvio chega como mensagem nova; offline, o reenvio fica na fila e sai quando a internet volta. Voltar à lista e reabrir o mesmo inventário: as unidades e **Exportar ou compartilhar arquivo** continuam aparecendo.
 
 O usuário informou em 22/10/2026 que login, envio e recebimento reais funcionavam na 1.1.1. Aparelho de referência: Motorola edge 60 fusion, Android 16, tela 1220 × 2712, densidade 450, escala de fonte 0,85.
 

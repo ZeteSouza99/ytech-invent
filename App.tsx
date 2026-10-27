@@ -353,6 +353,27 @@ function Application() {
     });
   }
 
+  // A deliberate new copy of an inventory already sent, to the same address or another one.
+  function resendInventory(to: string) {
+    if (!repository || !owner || !current || busyRef.current) return;
+    const id = current.id;
+    Alert.alert('Reenviar inventário?', `Uma nova mensagem com o relatório em PDF e a planilha Excel será enviada pelo seu Gmail para ${to}${online ? '' : ' quando houver internet'}.`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Reenviar', onPress: () => { void run(async () => {
+        if (session.userRef.current?.sub !== owner) throw new Error('A conta mudou. Abra o inventário novamente.');
+        await repository.resend(owner, id, to);
+        await data.reloadList();
+        if (online && outbox) {
+          try {
+            await outbox.sync(owner);
+          } finally {
+            await data.reloadList();
+          }
+        }
+      }); } },
+    ]);
+  }
+
   function retrySend(allowUncertain: boolean) {
     if (!outbox || !owner || !current) return;
     const id = current.id;
@@ -389,7 +410,7 @@ function Application() {
         onSubmit={values => { void run(() => submitForm(values)); }} onBack={() => go(screen === 'edit' ? 'inventory' : 'home')} />}
       {screen === 'inventory' && current && <InventoryScreen inventory={current} items={items} search={search} onSearch={setSearch}
         knownPns={knownPns} busy={busy} online={online} onEditIdentification={editIdentification} onRetry={retrySend}
-        onChangeRecipient={changeRecipient}
+        onChangeRecipient={changeRecipient} onResend={resendInventory}
         onExport={() => openExport()} onDelete={confirmDeleteInventory} onRemoveItem={removeItem}
         onEditItem={item => { if (!busyRef.current) dispatch({ type: 'unit', id: item.id }); }}
         onScan={startScanning} onManual={() => openManualForm()} onReview={() => go('review')} />}

@@ -106,11 +106,17 @@ export function inventoryMailText(inventory: Inventory, user: User, attachments:
   ].join('\n');
 }
 
-export function buildInventoryMessage(input: { inventory: Inventory; user: User; recipient: string; attachments: MailAttachment[] }): string {
+export function buildInventoryMessage(input: {
+  inventory: Inventory; user: User; recipient: string; attachments: MailAttachment[];
+  // Times the inventory was sent again: a resend is a new message, which Gmail must not merge with the first one.
+  resend?: number;
+}): string {
   const { inventory, user, attachments } = input;
   if (!/^[^\s@<>"]+@[^\s@<>"]+$/.test(user.email)) throw new Error('E-mail do responsável inválido.');
   const recipient = recipientSchema.safeParse(input.recipient);
   if (!recipient.success) throw new Error(`Destinatário inválido: ${input.recipient.slice(0, 254)}`);
+  const resends = input.resend ?? 0;
+  const resend = Number.isSafeInteger(resends) && resends > 0 ? `-${resends}` : '';
   const senderName = [...user.name].map(character => (character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127 ? ' ' : character))
     .join('').replace(/ {2,}/g, ' ').trim() || user.email;
   const boundary = `ytech-${inventory.id}`;
@@ -118,7 +124,7 @@ export function buildInventoryMessage(input: { inventory: Inventory; user: User;
     `From: ${encodeDisplayName(senderName)} <${user.email}>`,
     `To: ${recipient.data}`,
     `Subject: ${encodeHeaderText(`Inventário Ytech: ${inventory.title}`)}`,
-    `Message-ID: <inventory-${inventory.id}@ytechsolucoes.com>`,
+    `Message-ID: <inventory-${inventory.id}${resend}@ytechsolucoes.com>`,
     'MIME-Version: 1.0',
     `Content-Type: multipart/mixed; boundary="${boundary}"`,
     '',

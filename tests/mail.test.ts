@@ -171,6 +171,27 @@ describe('codificação do e-mail', () => {
       .toThrow('Destinatário inválido');
   });
 
+  // Gmail may hide a second message with the Message-ID of one already delivered.
+  it('cada reenvio sai com um Message-ID próprio, e o primeiro envio mantém o original', async () => {
+    const content = utf8Encode('x');
+    const sample = inventory();
+    const messageId = (resend?: number) => parse(buildInventoryMessage({
+      inventory: sample, user, recipient: DEFAULT_RECIPIENT, attachments: [{ filename: 'Inventario.xlsx', mimeType: 'a/b', content }],
+      ...(resend === undefined ? {} : { resend }),
+    })).headers.get('Message-ID');
+    expect([messageId(), messageId(0), messageId(1), messageId(2)]).toEqual([
+      `<inventory-${sample.id}@ytechsolucoes.com>`, `<inventory-${sample.id}@ytechsolucoes.com>`,
+      `<inventory-${sample.id}-1@ytechsolucoes.com>`, `<inventory-${sample.id}-2@ytechsolucoes.com>`,
+    ]);
+    const service = await createWorkbookService(new Uint8Array(await readFile('assets/catalog/sb1-produtos.xlsx')), 'v1');
+    const delivery = createGmailDelivery({
+      workbook: async () => service, user: () => user, accessToken: async () => 'token',
+      reportPdf: async () => ({ filename: 'Inventario.pdf', mimeType: 'application/pdf', content: utf8Encode('%PDF-1.7') }),
+    });
+    const { raw } = await delivery.prepare(user.sub, sample, DEFAULT_RECIPIENT, 3);
+    expect(parse(raw).headers.get('Message-ID')).toBe(`<inventory-${sample.id}-3@ytechsolucoes.com>`);
+  });
+
   it('leva a planilha real no e-mail e ela abre no Excel', async () => {
     const template = new Uint8Array(await readFile('assets/catalog/sb1-produtos.xlsx'));
     const service = await createWorkbookService(template, 'v1');

@@ -29,3 +29,16 @@ export function RecipientEditor({ label, saved, saveTitle, busy, onSave }: {
     <Button title={saveTitle} secondary disabled={busy || !changed} onPress={() => { if (parsed.success) onSave(parsed.data); }} />
   </View>;
 }
+
+// Sends an inventory already sent once more, to the last address or another one typed here.
+export function ResendPanel({ recipient, busy, online, onResend }: {
+  recipient: string; busy: boolean; online: boolean; onResend: (recipient: string) => void;
+}) {
+  const [value, setValue] = useState(recipient);
+  const parsed = recipientSchema.safeParse(value);
+  return <View style={{ gap: 8 }}>
+    <RecipientField label="Reenviar para" value={value} onChangeText={setValue} busy={busy} />
+    {!online && <Notice>Você está offline. O reenvio fica na fila até haver internet.</Notice>}
+    <Button title="Reenviar e-mail" secondary disabled={busy || !parsed.success} onPress={() => { if (parsed.success) onResend(parsed.data); }} />
+  </View>;
+}

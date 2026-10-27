@@ -518,9 +518,9 @@ describe('leitura tolerante, relógio, migrações e edição de unidades', () =
     const { repository, sqlite } = connect();
     try {
       await repository.initialize();
-      expect(sqlite.prepare('PRAGMA user_version').get()?.user_version).toBe(3);
+      expect(sqlite.prepare('PRAGMA user_version').get()?.user_version).toBe(4);
       await repository.initialize();
-      expect(sqlite.prepare('PRAGMA user_version').get()?.user_version).toBe(3);
+      expect(sqlite.prepare('PRAGMA user_version').get()?.user_version).toBe(4);
       sqlite.exec('PRAGMA user_version = 99');
       await expect(repository.initialize()).rejects.toThrow('versão mais nova');
     } finally { sqlite.close(); }
@@ -745,13 +745,80 @@ describe('destinatário do e-mail', () => {
         .run(d.id, d.owner, d.title, d.location, d.startedAt, unit.capturedAt, d.catalogVersion);
       sqlite.prepare('INSERT INTO items(id,inventoryId,ns,json) VALUES (?,?,?,?)').run(unit.id, d.id, unit.ns, JSON.stringify(unit));
       await repository.initialize();
-      expect(sqlite.prepare('PRAGMA user_version').get()?.user_version).toBe(3);
+      expect(sqlite.prepare('PRAGMA user_version').get()?.user_version).toBe(4);
       expect((await repository.get(d.owner, d.id)).recipient).toBeUndefined();
       expect(await repository.defaultRecipient(d.owner)).toBe(DEFAULT_RECIPIENT);
       const { delivery, prepared } = recordingDelivery();
       await new Outbox(repository, delivery).sync(d.owner);
       expect(prepared).toEqual([DEFAULT_RECIPIENT]);
       expect((await repository.get(d.owner, d.id)).state).toBe('sent');
+    } finally { sqlite.close(); }
+  });
+});
+
+describe('reenvio de inventário já enviado', () => {
+  // Records the address and the resend number of every message prepared.
+  function resendDelivery() {
+    const prepared: string[] = [];
+    const fake = fakeDelivery(async () => sent, {
+      async prepare(_owner, inventory, recipient, resend = 0) {
+        prepared.push(`${recipient}#${resend}`);
+        return { raw: `raw:${inventory.title}>${recipient}#${resend}`, warnings: [] };
+      },
+    });
+    return { ...fake, prepared };
+  }
+
+  it('reenvia como nova mensagem, para o mesmo destinatário ou para outro', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const d = await queued(repository);
+      const { delivery, calls, prepared } = resendDelivery();
+      const outbox = new Outbox(repository, delivery);
+      await outbox.sync(d.owner);
+      expect((await repository.get(d.owner, d.id)).state).toBe('sent');
+
+      await repository.resend(d.owner, d.id, ' Compras@Cliente.com.br ');
+      const queuedAgain = await repository.get(d.owner, d.id);
+      expect(queuedAgain).toMatchObject({ state: 'queued', recipient: 'compras@cliente.com.br', resends: 1, receipt: null, lastError: '' });
+      // The units stay as they were sent, locked for editing.
+      expect(await repository.items(d.owner, d.id)).toHaveLength(1);
+      await expect(repository.add(d.owner, d.id, item('NOVO'))).rejects.toThrow();
+      await outbox.sync(d.owner);
+      const resent = await repository.get(d.owner, d.id);
+      expect(resent.state).toBe('sent');
+      expect(resent.receipt).toContain('Reenviado pelo seu Gmail para compras@cliente.com.br');
+
+      await repository.resend(d.owner, d.id, 'compras@cliente.com.br');
+      await outbox.sync(d.owner);
+      expect(prepared).toEqual([`${DEFAULT_RECIPIENT}#0`, 'compras@cliente.com.br#1', 'compras@cliente.com.br#2']);
+      expect(calls.transmit).toHaveLength(3);
+    } finally { sqlite.close(); }
+  });
+
+  it('só reenvia o que já foi enviado, para um endereço válido e da própria conta', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const d = draft();
+      await repository.create(d);
+      await repository.add(d.owner, d.id, item());
+      await expect(repository.resend(d.owner, d.id, DEFAULT_RECIPIENT)).rejects.toThrow('já foi enviado');
+      await repository.finish(d.owner, d.id);
+      await expect(repository.resend(d.owner, d.id, DEFAULT_RECIPIENT)).rejects.toThrow('já foi enviado');
+      for (const status of ['failed', 'uncertain'] as const) {
+        await repository.markSending(d.owner, d.id);
+        await repository.settle(d.owner, d.id, { status, message: 'Resultado', warnings: [] });
+        await expect(repository.resend(d.owner, d.id, DEFAULT_RECIPIENT), status).rejects.toThrow('já foi enviado');
+        await repository.requeue(d.owner, d.id, true);
+      }
+      await repository.markSending(d.owner, d.id);
+      await repository.settle(d.owner, d.id, { status: 'sent', message: 'Enviado', warnings: [] });
+      await expect(repository.resend(d.owner, d.id, 'sem-arroba')).rejects.toThrow('e-mail válido');
+      await expect(repository.resend('outra-conta', d.id, DEFAULT_RECIPIENT)).rejects.toThrow('não encontrado');
+      expect(await repository.get(d.owner, d.id)).toMatchObject({ state: 'sent', recipient: DEFAULT_RECIPIENT });
+      expect((await repository.get(d.owner, d.id)).resends).toBeUndefined();
     } finally { sqlite.close(); }
   });
 });

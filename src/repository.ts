@@ -30,6 +30,8 @@ export type Draft = {
   organization?: Organization;
   // E-mail chosen when the inventory was concluded; absent for inventories concluded before 1.1.2.
   recipient?: string;
+  // Times the inventory was sent again after being sent; each resend is a new message.
+  resends?: number;
   // Present when stored data can no longer be read; the inventory stays visible so it can be repaired or deleted.
   problem?: string;
 };
@@ -51,6 +53,7 @@ const rowSchema = z.object({
   startedAt: z.iso.datetime(), completedAt: z.iso.datetime().nullable(), catalogVersion: z.string().min(1),
   state: z.enum(INVENTORY_STATES), lastError: z.string(), receipt: z.string().nullable(),
   organization: z.string().nullable().optional(), recipient: z.string().nullable().optional(),
+  resends: z.number().int().nonnegative().nullable().optional(),
 });
 const storedItemSchema = z.object({
   id: z.string().min(1).max(64), pn: z.string().min(1).max(120), ns: z.string().min(1).max(80),
@@ -97,6 +100,10 @@ const MIGRATIONS: ((db: LocalDatabase) => Promise<void>)[] = [
       CREATE TABLE IF NOT EXISTS settings (owner TEXT NOT NULL, name TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (owner, name));
     `);
   },
+  // Number of resends of a sent inventory, which gives each resend its own message identifier.
+  async db => {
+    await db.execAsync('ALTER TABLE inventories ADD COLUMN resends INTEGER NOT NULL DEFAULT 0');
+  },
 ];
 
 function parseOrganization(text: string): Organization | null {
@@ -109,8 +116,8 @@ function parseOrganization(text: string): Organization | null {
 }
 
 function toDraft(row: unknown): Draft {
-  const { organization: stored, recipient, ...fields } = rowSchema.parse(row);
-  const draft: Draft = { ...fields, ...(recipient ? { recipient } : {}) };
+  const { organization: stored, recipient, resends, ...fields } = rowSchema.parse(row);
+  const draft: Draft = { ...fields, ...(recipient ? { recipient } : {}), ...(resends ? { resends } : {}) };
   if (stored) {
     const organization = parseOrganization(stored);
     if (organization) draft.organization = organization;
@@ -456,6 +463,19 @@ export class InventoryRepository {
       const states = allowUncertain ? "('failed','uncertain')" : "('failed')";
       const result = await this.db.runAsync(`UPDATE inventories SET state='queued',lastError='' WHERE id=? AND owner=? AND state IN ${states}`, id, owner);
       if (!result.changes) throw new Error('Este envio não pode ser repetido no estado atual.');
+    });
+  }
+
+  // Sends an inventory already sent once more, to the same or another address. It goes back to the queue and
+  // leaves as a new message, so Gmail does not take it for a duplicate of the first one.
+  resend(owner: string, id: string, recipient: string): Promise<void> {
+    return this.serialize(async () => {
+      const to = recipientSchema.parse(recipient);
+      await this.get(owner, id);
+      const result = await this.db.runAsync(
+        "UPDATE inventories SET state='queued',lastError='',receipt=NULL,recipient=?,resends=resends+1 WHERE id=? AND owner=? AND state='sent'",
+        to, id, owner);
+      if (!result.changes) throw new Error('Só é possível reenviar um inventário que já foi enviado.');
     });
   }
 

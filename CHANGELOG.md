@@ -6,7 +6,7 @@ Exportação simples (substitui o modelo TOTVS):
 
 - PDF, Excel e CSV trazem a mesma tabela: uma linha por unidade com Empresa, CNPJ, Inventário, PN, Descrição, NS, Quantidade, Patrimônio, Localização e Data da leitura. O PDF e o Excel também trazem a quantidade por PN e o total.
 - Não há mais `SB1_Produtos.xlsx` nem as abas Identificação e Pendências; o catálogo SB1 continua servindo para reconhecer os PN e preencher a descrição.
-- O e-mail automático leva dois anexos, o PDF e a planilha Excel, e o corpo traz a quantidade por PN. Se o PDF falhar, estiver vazio ou tiver tipo incorreto, nada é transmitido e o app permite tentar de novo. E-mails já enviados não são alterados nem reenviados.
+- O e-mail automático leva dois anexos, o PDF e a planilha Excel, e o corpo traz a quantidade por PN. Se o PDF falhar, estiver vazio ou tiver tipo incorreto, nada é transmitido e o app permite tentar de novo. E-mails já enviados não são alterados nem reenviados automaticamente.
 - A planilha Excel funciona também para todos os inventários da conta de uma vez.
 - O CSV usa `;` como separador, o padrão do Excel em português.
 
@@ -15,6 +15,7 @@ Destinatário:
 - O e-mail que recebe os inventários pode ser trocado: um padrão por conta em **Conta e dados** (inicialmente `lorena@ytechsolucoes.com`) e, em **Revisar e concluir**, outro e-mail digitado só para aquele inventário.
 - O destinatário fica gravado com o inventário na conclusão e pode ser corrigido enquanto o envio está na fila ou depois de uma falha. Se mudar durante a montagem da mensagem, aquela tentativa não é transmitida e a próxima usa o novo endereço.
 - Só um endereço simples é aceito (sem nome, lista ou quebra de linha), validado também na montagem do e-mail. Inventários concluídos em versões anteriores seguem para o destino original.
+- Inventário já enviado ganhou **Reenviar e-mail**, para o mesmo endereço ou outro digitado na hora. O reenvio sai como uma nova mensagem com o mesmo PDF e a mesma planilha e um Message-ID próprio, para o Gmail não escondê-lo como duplicata; sem internet, fica na fila.
 
 Leitor:
 
