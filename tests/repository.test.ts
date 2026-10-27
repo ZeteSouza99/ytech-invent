@@ -819,6 +819,11 @@ describe('reenvio de inventário já enviado', () => {
       await expect(repository.resend('outra-conta', d.id, DEFAULT_RECIPIENT)).rejects.toThrow('não encontrado');
       expect(await repository.get(d.owner, d.id)).toMatchObject({ state: 'sent', recipient: DEFAULT_RECIPIENT });
       expect((await repository.get(d.owner, d.id)).resends).toBeUndefined();
+      // The state is checked before the data: a draft with old data is still "not sent".
+      const oldDraft = draft();
+      await repository.create(oldDraft);
+      sqlite.prepare('UPDATE inventories SET title=? WHERE id=?').run('Sala\tA', oldDraft.id);
+      await expect(repository.resend(oldDraft.owner, oldDraft.id, DEFAULT_RECIPIENT)).rejects.toThrow('já foi enviado');
     } finally { sqlite.close(); }
   });
 
@@ -829,17 +834,21 @@ describe('reenvio de inventário já enviado', () => {
       await repository.initialize();
       const unreadable = await queued(repository);
       const oldTitle = await queued(repository, { title: 'Antigo' });
+      const unfinished = await queued(repository, { title: 'Sem conclusão' });
       const { delivery, calls } = resendDelivery();
       await new Outbox(repository, delivery).sync(unreadable.owner);
       sqlite.prepare('UPDATE inventories SET organization=? WHERE id=?').run('{não é json', unreadable.id);
       sqlite.prepare('UPDATE inventories SET title=? WHERE id=?').run('Sala\tA', oldTitle.id);
-      for (const [d, reason] of [[unreadable, 'identificação da empresa'], [oldTitle, 'controle']] as const) {
+      sqlite.prepare('UPDATE inventories SET completedAt=NULL WHERE id=?').run(unfinished.id);
+      const cases = [[unreadable, 'identificação da empresa'], [oldTitle, 'controle'], [unfinished, 'Conclua']] as const;
+      for (const [d, reason] of cases) {
         const before = await repository.get(d.owner, d.id);
         expect(before).toMatchObject({ state: 'sent', receipt: expect.stringContaining('Enviado pelo seu Gmail') });
-        await expect(repository.resend(d.owner, d.id, 'compras@cliente.com.br')).rejects.toThrow(reason);
+        await expect(repository.resend(d.owner, d.id, 'compras@cliente.com.br'), reason).rejects.toThrow('não pode ser reenviado');
+        await expect(repository.resend(d.owner, d.id, 'compras@cliente.com.br'), reason).rejects.toThrow(reason);
         expect(await repository.get(d.owner, d.id)).toEqual(before);
       }
-      expect(calls.transmit).toHaveLength(2);
+      expect(calls.transmit).toHaveLength(3);
     } finally { sqlite.close(); }
   });
 });

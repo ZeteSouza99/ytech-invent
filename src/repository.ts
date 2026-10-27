@@ -418,7 +418,11 @@ export class InventoryRepository {
   }
 
   async payload(owner: string, id: string): Promise<Inventory> {
-    const draft = await this.get(owner, id);
+    return this.sendable(await this.get(owner, id));
+  }
+
+  // The inventory exactly as it will be sent: concluded and valid under the current rules.
+  private async sendable(draft: Draft): Promise<Inventory> {
     if (!draft.completedAt || draft.state === 'draft') throw new Error('Conclua o inventário antes de enviar.');
     return this.validated(draft, draft.completedAt);
   }
@@ -475,7 +479,12 @@ export class InventoryRepository {
       const draft = await this.get(owner, id);
       if (draft.state !== 'sent') throw new Error(RESEND_NOT_SENT);
       // Data saved under older rules would fail every attempt; checked first, the inventory stays sent with its receipt.
-      await this.validated(draft, draft.completedAt);
+      try {
+        await this.sendable(draft);
+      } catch (error) {
+        const reason = errorMessage(error).trim();
+        throw new Error(`Este inventário não pode ser reenviado porque tem dados gravados por uma versão anterior do app que não passam nas regras atuais: ${/[.!?]$/.test(reason) ? reason : `${reason}.`} Ele continua como enviado.`);
+      }
       const result = await this.db.runAsync(
         "UPDATE inventories SET state='queued',lastError='',receipt=NULL,recipient=?,resends=resends+1 WHERE id=? AND owner=? AND state='sent'",
         to, id, owner);

@@ -2,9 +2,30 @@ import { useMemo } from 'react';
 import { FlatList, Text, View } from 'react-native';
 import { formatCnpj, organizationKindLabel } from '../../shared/company';
 import { DEFAULT_RECIPIENT, inventoryTextSchema, receiptSchema, type InventoryItem } from '../../shared/model';
+import { formatDateTime } from '../../shared/report';
 import type { InventorySummary } from '../repository';
 import { Button, colors, Field, Notice, stateLabels, styles } from '../ui';
 import { RecipientEditor, ResendPanel } from './RecipientEditor';
+
+// After a resend, the original message and the earlier resends, with the same subject, are in Sent as well.
+function earlierMessages(resends: number | undefined): string | null {
+  if (!resends) return null;
+  return resends > 1 ? 'a mensagem original e os reenvios anteriores também aparecem lá' : 'a mensagem original também aparece lá';
+}
+
+// `recordedAt` is when the uncertain result was saved; a message that went out was sent before it.
+export function uncertainNotice(resends: number | undefined, recordedAt: string | null): string {
+  const notice = 'Não foi possível confirmar se o e-mail saiu. Confira a pasta Enviados do seu Gmail antes de reenviar.';
+  const earlier = earlierMessages(resends);
+  if (!earlier) return notice;
+  return `${notice} Como este foi um reenvio, ${earlier}: procure uma com o horário deste reenvio${recordedAt ? ` (resultado registrado em ${formatDateTime(recordedAt)})` : ''}.`;
+}
+
+export function uncertainRetryMessage(inventory: Pick<InventorySummary, 'title' | 'recipient' | 'resends'>): string {
+  const earlier = earlierMessages(inventory.resends);
+  const lookFor = `“Inventário Ytech: ${inventory.title}”${earlier ? ` com o horário deste reenvio (${earlier})` : ''}`;
+  return `Abra a pasta Enviados do seu Gmail e procure ${lookFor}. Se a mensagem já estiver lá, não reenvie: ${inventory.recipient ?? DEFAULT_RECIPIENT} receberia uma cópia duplicada.`;
+}
 
 export function InventoryScreen({
   inventory, items, search, onSearch, knownPns, busy, online,
@@ -36,6 +57,8 @@ export function InventoryScreen({
   const recipient = inventory.recipient ?? DEFAULT_RECIPIENT;
   const recipientEditable = inventory.state === 'queued' || inventory.state === 'failed';
   const invalidIdentification = !inventoryTextSchema.safeParse(inventory.title).success || !inventoryTextSchema.safeParse(inventory.location).success;
+  // Data saved under older rules fails every send, so a resend is not offered.
+  const resendBlocked = !!inventory.problem || invalidIdentification;
 
   return <>
     <FlatList data={visibleItems} keyExtractor={item => item.id} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"
@@ -57,9 +80,10 @@ export function InventoryScreen({
         {receipt && <Notice>{receipt.message}{'\n'}{receipt.warnings.slice(0, 6).join('\n')}{receipt.warnings.length > 6 ? `\nMais ${receipt.warnings.length - 6} avisos no relatório.` : ''}</Notice>}
         {inventory.state === 'queued' && <Notice>Leituras preservadas. O envio pelo seu Gmail é tentado com este aplicativo aberto e conectado e, quando o Android permitir, também em segundo plano.</Notice>}
         {inventory.state === 'sending' && <Notice>Enviando pelo seu Gmail. Mantenha o aplicativo aberto até concluir.</Notice>}
-        {inventory.state === 'uncertain' && <Notice>Não foi possível confirmar se o e-mail saiu. Confira a pasta Enviados do seu Gmail antes de reenviar.{inventory.resends ? ' Como este foi um reenvio, a mensagem original e os reenvios anteriores também aparecem lá: procure uma com o horário deste reenvio.' : ''}</Notice>}
+        {inventory.state === 'uncertain' && <Notice>{uncertainNotice(inventory.resends, receipt?.updatedAt ?? null)}</Notice>}
         {inventory.state === 'sent' && <Text style={styles.body}>A mensagem está na pasta Enviados do seu Gmail. O envio não confirma a leitura pelo destinatário.</Text>}
-        {inventory.state === 'sent' && !inventory.problem && <ResendPanel key={recipient} recipient={recipient} busy={busy} online={online} onResend={onResend} />}
+        {inventory.state === 'sent' && !resendBlocked && <ResendPanel key={recipient} recipient={recipient} busy={busy} online={online} onResend={onResend} />}
+        {inventory.state === 'sent' && resendBlocked && <Notice>Este inventário não pode ser reenviado: tem dados gravados por uma versão anterior do app que não passam nas regras atuais.</Notice>}
         {inventory.state === 'failed' && <Button title="Tentar envio novamente" disabled={busy || !online} onPress={() => onRetry(false)} />}
         {inventory.state === 'uncertain' && <Button title="Reenviar após conferir Enviados" secondary disabled={busy || !online} onPress={() => onRetry(true)} />}
         {!!items.length && <Button title="Exportar ou compartilhar arquivo" secondary disabled={busy} onPress={onExport} />}

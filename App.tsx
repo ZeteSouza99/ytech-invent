@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { ActivityIndicator, Alert, BackHandler, Pressable, StatusBar, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { randomUUID } from 'expo-crypto';
-import { DEFAULT_RECIPIENT, errorMessage, type InventoryItem, type Product } from './shared/model';
+import { errorMessage, type InventoryItem, type Product } from './shared/model';
 import { formatCnpj, organizationSchema, YTECH_CNPJ, YTECH_NAME } from './shared/company';
 import { configurationError } from './src/google';
 import { loadWorkbookService } from './src/catalog';
@@ -23,7 +23,7 @@ import { initialNavigation, navigationReducer, type Screen } from './src/app/nav
 import { LoginScreen } from './src/screens/LoginScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { InventoryFormScreen, type InventoryFormValues } from './src/screens/InventoryFormScreen';
-import { InventoryScreen } from './src/screens/InventoryScreen';
+import { InventoryScreen, uncertainRetryMessage } from './src/screens/InventoryScreen';
 import { ManualEntryScreen, type ManualEntry } from './src/screens/ManualEntryScreen';
 import { EditUnitScreen } from './src/screens/EditUnitScreen';
 import { AccountScreen } from './src/screens/AccountScreen';
@@ -382,12 +382,7 @@ function Application() {
       finally { await data.reloadList(); }
     }); };
     if (!allowUncertain) { send(); return; }
-    const recipientNow = current.recipient ?? DEFAULT_RECIPIENT;
-    // After a resend, the original message and earlier resends with the same subject are already in Sent.
-    const lookFor = current.resends
-      ? `procure “Inventário Ytech: ${current.title}” com o horário deste reenvio (a mensagem original e os reenvios anteriores também aparecem lá)`
-      : `procure “Inventário Ytech: ${current.title}”`;
-    Alert.alert('Reenviar este inventário?', `Abra a pasta Enviados do seu Gmail e ${lookFor}. Se a mensagem já estiver lá, não reenvie: ${recipientNow} receberia uma cópia duplicada.`, [
+    Alert.alert('Reenviar este inventário?', uncertainRetryMessage(current), [
       { text: 'Não reenviar', style: 'cancel' },
       { text: 'Não está em Enviados, reenviar', style: 'destructive', onPress: send },
     ]);

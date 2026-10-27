@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { isValidElement, type ReactNode } from 'react';
 import { DEFAULT_RECIPIENT } from '../shared/model';
+import { formatDateTime } from '../shared/report';
 import { useInventoryData } from '../src/app/hooks';
 import { INVENTORY_STATES, type InventoryRepository, type InventorySummary } from '../src/repository';
-import { InventoryScreen } from '../src/screens/InventoryScreen';
+import { InventoryScreen, uncertainNotice, uncertainRetryMessage } from '../src/screens/InventoryScreen';
 import { ResendPanel } from '../src/screens/RecipientEditor';
 
 // One slot per hook call, in call order. Callbacks, memos and effects are recomputed only when their
@@ -131,15 +132,35 @@ describe('tela do inventário', () => {
     expect(!!resendPanel(screen({ state }))).toBe(state === 'sent');
   });
 
-  it('reenvia para o último destinatário e não oferece reenvio de inventário marcado para reparo', () => {
+  it('reenvia para o último destinatário e não oferece reenvio de dados gravados fora das regras atuais', () => {
+    const blocked = 'Este inventário não pode ser reenviado';
     expect(resendPanel(screen({}))?.props.recipient).toBe(DEFAULT_RECIPIENT);
+    expect(text(screen({}))).not.toContain(blocked);
     expect(resendPanel(screen({ recipient: 'compras@cliente.com.br' }))?.props.recipient).toBe('compras@cliente.com.br');
-    expect(resendPanel(screen({ problem: 'A identificação da empresa salva neste inventário está ilegível.' }))).toBeUndefined();
+    for (const changes of [{ problem: 'A identificação da empresa salva neste inventário está ilegível.' }, { title: 'Sala\tA' }, { location: ' ' }]) {
+      const tree = screen(changes);
+      expect(resendPanel(tree), JSON.stringify(changes)).toBeUndefined();
+      expect(text(tree), JSON.stringify(changes)).toContain(blocked);
+    }
   });
 
   it('no envio incerto de um reenvio, avisa que as mensagens anteriores também estão em Enviados', () => {
+    const recordedAt = '2026-10-27T17:32:00.000Z';
+    const receipt = JSON.stringify({ id: '7d6f1c1e-5a8b-4c55-9a51-0d8f3b2a4e10', status: 'uncertain', message: 'Sem resposta do Gmail.', updatedAt: recordedAt, warnings: [] });
     expect(text(screen({ state: 'uncertain' }))).toContain('Confira a pasta Enviados');
-    expect(text(screen({ state: 'uncertain' }))).not.toContain('reenvios anteriores');
+    expect(text(screen({ state: 'uncertain' }))).not.toContain('Como este foi um reenvio');
+    const once = text(screen({ state: 'uncertain', resends: 1, receipt }));
+    expect(once).toContain('a mensagem original também aparece lá: procure uma com o horário deste reenvio');
+    expect(once).toContain(`(resultado registrado em ${formatDateTime(recordedAt)})`);
+    expect(once).not.toContain('reenvios anteriores');
     expect(text(screen({ state: 'uncertain', resends: 2 }))).toContain('a mensagem original e os reenvios anteriores também aparecem lá');
+    expect(uncertainNotice(2, null)).not.toContain('resultado registrado');
+  });
+
+  it('o alerta para repetir um envio incerto diz o que procurar em Enviados e quem receberia a cópia', () => {
+    const inventory = { title: 'Cliente', recipient: 'compras@cliente.com.br' };
+    expect(uncertainRetryMessage({ title: 'Cliente' })).toBe(`Abra a pasta Enviados do seu Gmail e procure “Inventário Ytech: Cliente”. Se a mensagem já estiver lá, não reenvie: ${DEFAULT_RECIPIENT} receberia uma cópia duplicada.`);
+    expect(uncertainRetryMessage({ ...inventory, resends: 1 })).toBe('Abra a pasta Enviados do seu Gmail e procure “Inventário Ytech: Cliente” com o horário deste reenvio (a mensagem original também aparece lá). Se a mensagem já estiver lá, não reenvie: compras@cliente.com.br receberia uma cópia duplicada.');
+    expect(uncertainRetryMessage({ ...inventory, resends: 3 })).toContain('com o horário deste reenvio (a mensagem original e os reenvios anteriores também aparecem lá)');
   });
 });
