@@ -48,7 +48,7 @@ Cada conta acessa só as próprias coletas. Sair não apaga dados; desinstalar o
 
 - Estados: `draft` (em coleta), `queued`, `sending`, `sent`, `failed`, `uncertain` (envio a conferir).
 - Com o app aberto, a fila é tentada a cada 30 segundos quando há internet. Com o app fechado, o Android executa a fila em segundo plano no mínimo a cada 15 minutos, quando há rede; o horário exato é decidido pelo sistema. Em segundo plano, o que depende da tela ou da conta (gerar o PDF, renovar o login) fica na fila para a próxima tentativa com o app aberto. Criar, migrar ou recuperar o banco local só acontece com o app aberto.
-- O estado `sending` é gravado antes de transmitir. Queda de conexão, interrupção, HTTP 408/5xx ou resposta sem ID da mensagem ficam como `uncertain`; reenviar exige conferir a pasta Enviados, porque o Message-ID fixo não garante que o Gmail elimine duplicatas.
+- O estado `sending` é gravado antes de transmitir. Queda de conexão, interrupção, HTTP 408/5xx ou resposta sem ID da mensagem ficam como `uncertain`; reenviar exige conferir a pasta Enviados, porque a nova tentativa repete o Message-ID e isso não garante que o Gmail elimine duplicatas.
 - Falhas conhecidas (`failed`) exigem uma nova tentativa explícita.
 - Dois anexos: o relatório em PDF e a planilha Excel descritos em [Exportação](#exportação-e-backup); o corpo do e-mail traz a quantidade por PN. Se o PDF falhar, nada é transmitido.
 
@@ -57,7 +57,7 @@ Cada conta acessa só as próprias coletas. Sair não apaga dados; desinstalar o
 - **Padrão da conta:** em **Conta e dados → Destino dos inventários**, digite o e-mail que recebe os inventários e toque em **Salvar destino padrão**. Vale para os próximos inventários desta conta neste aparelho. Sem escolha, o padrão é `lorena@ytechsolucoes.com`; **Voltar para lorena@ytechsolucoes.com** desfaz a troca.
 - **Por inventário:** em **Revisar e concluir**, o campo **Enviar para** vem preenchido com o padrão e pode receber outro e-mail só para aquele inventário. O endereço fica gravado com o inventário na conclusão, então mudar o padrão depois não redireciona envios já na fila.
 - **Correção depois de concluir:** enquanto o envio está na fila ou depois de uma falha (`queued` ou `failed`), o inventário mostra **Alterar destinatário**. Depois que a transmissão começou (`sending`, `sent`, `uncertain`) o destinatário fica fixo. Se o endereço mudar enquanto a mensagem é montada, aquela tentativa não é transmitida e a próxima usa o novo endereço. Para mandar a outro endereço depois do envio, use **Reenviar e-mail**.
-- **Reenvio:** um inventário já enviado (`sent`) mostra o campo **Reenviar para**, preenchido com o último destinatário, e o botão **Reenviar e-mail**, para o mesmo endereço ou outro digitado na hora. O inventário volta para a fila e sai como uma nova mensagem, com o mesmo PDF e a mesma planilha e um Message-ID próprio, para o Gmail não tratá-la como duplicata da anterior. Sem internet, fica na fila até a conexão voltar. As unidades continuam bloqueadas, e a tela passa a mostrar o destinatário e o comprovante do último envio.
+- **Reenvio:** um inventário já enviado (`sent`) mostra o campo **Reenviar para**, preenchido com o último destinatário, e o botão **Reenviar e-mail**, para o mesmo endereço ou outro digitado na hora. O inventário volta para a fila e sai como uma nova mensagem, com o PDF e a planilha gerados de novo a partir das mesmas unidades e um Message-ID próprio, para o Gmail não tratá-la como duplicata da anterior. Sem internet, fica na fila até a conexão voltar. As unidades continuam bloqueadas, e a tela passa a mostrar o destinatário e o comprovante do último envio. Inventário com dados gravados por versões antigas que não passam mais nas regras atuais não é reenviado e continua como enviado.
 - Aceita um único endereço, sem nome, lista, espaços ou quebras de linha; maiúsculas são convertidas para minúsculas. O endereço é validado de novo ao montar o e-mail.
 - Inventários concluídos antes desta versão seguem para `lorena@ytechsolucoes.com`.
 
@@ -154,6 +154,8 @@ Itens da 1.1.2 que os testes automatizados não cobrem:
 6. Uma coleta grande (milhares de unidades): tempo para salvar cada unidade, concluir e gerar o PDF.
 7. Trocar o destino padrão em **Conta e dados**, concluir um inventário com outro e-mail digitado em **Revisar e concluir** e conferir que cada um chegou ao endereço certo; alterar o destinatário de um inventário na fila (offline) antes do envio.
 8. Reenviar um inventário já enviado para o mesmo e-mail e para outro, e conferir que cada reenvio chega como mensagem nova; offline, o reenvio fica na fila e sai quando a internet volta. Voltar à lista e reabrir o mesmo inventário: as unidades e **Exportar ou compartilhar arquivo** continuam aparecendo.
+
+Os builds de teste da 1.1.2 anteriores ao reenvio usam o banco na versão 3. Depois que um build mais novo migra o banco para a versão 4, eles não abrem mais os dados. Nada se perde: basta instalar de novo o APK mais recente.
 
 O usuário informou em 22/10/2026 que login, envio e recebimento reais funcionavam na 1.1.1. Aparelho de referência: Motorola edge 60 fusion, Android 16, tela 1220 × 2712, densidade 450, escala de fonte 0,85.
 

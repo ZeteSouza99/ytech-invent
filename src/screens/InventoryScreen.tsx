@@ -57,9 +57,9 @@ export function InventoryScreen({
         {receipt && <Notice>{receipt.message}{'\n'}{receipt.warnings.slice(0, 6).join('\n')}{receipt.warnings.length > 6 ? `\nMais ${receipt.warnings.length - 6} avisos no relatório.` : ''}</Notice>}
         {inventory.state === 'queued' && <Notice>Leituras preservadas. O envio pelo seu Gmail é tentado com este aplicativo aberto e conectado e, quando o Android permitir, também em segundo plano.</Notice>}
         {inventory.state === 'sending' && <Notice>Enviando pelo seu Gmail. Mantenha o aplicativo aberto até concluir.</Notice>}
-        {inventory.state === 'uncertain' && <Notice>Não foi possível confirmar se o e-mail saiu. Confira a pasta Enviados do seu Gmail antes de reenviar.</Notice>}
+        {inventory.state === 'uncertain' && <Notice>Não foi possível confirmar se o e-mail saiu. Confira a pasta Enviados do seu Gmail antes de reenviar.{inventory.resends ? ' Como este foi um reenvio, a mensagem original e os reenvios anteriores também aparecem lá: procure uma com o horário deste reenvio.' : ''}</Notice>}
         {inventory.state === 'sent' && <Text style={styles.body}>A mensagem está na pasta Enviados do seu Gmail. O envio não confirma a leitura pelo destinatário.</Text>}
-        {inventory.state === 'sent' && <ResendPanel key={recipient} recipient={recipient} busy={busy} online={online} onResend={onResend} />}
+        {inventory.state === 'sent' && !inventory.problem && <ResendPanel key={recipient} recipient={recipient} busy={busy} online={online} onResend={onResend} />}
         {inventory.state === 'failed' && <Button title="Tentar envio novamente" disabled={busy || !online} onPress={() => onRetry(false)} />}
         {inventory.state === 'uncertain' && <Button title="Reenviar após conferir Enviados" secondary disabled={busy || !online} onPress={() => onRetry(true)} />}
         {!!items.length && <Button title="Exportar ou compartilhar arquivo" secondary disabled={busy} onPress={onExport} />}

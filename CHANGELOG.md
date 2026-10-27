@@ -15,7 +15,7 @@ Destinatário:
 - O e-mail que recebe os inventários pode ser trocado: um padrão por conta em **Conta e dados** (inicialmente `lorena@ytechsolucoes.com`) e, em **Revisar e concluir**, outro e-mail digitado só para aquele inventário.
 - O destinatário fica gravado com o inventário na conclusão e pode ser corrigido enquanto o envio está na fila ou depois de uma falha. Se mudar durante a montagem da mensagem, aquela tentativa não é transmitida e a próxima usa o novo endereço.
 - Só um endereço simples é aceito (sem nome, lista ou quebra de linha), validado também na montagem do e-mail. Inventários concluídos em versões anteriores seguem para o destino original.
-- Inventário já enviado ganhou **Reenviar e-mail**, para o mesmo endereço ou outro digitado na hora. O reenvio sai como uma nova mensagem com o mesmo PDF e a mesma planilha e um Message-ID próprio, para o Gmail não escondê-lo como duplicata; sem internet, fica na fila.
+- Inventário já enviado ganhou **Reenviar e-mail**, para o mesmo endereço ou outro digitado na hora. O reenvio sai como uma nova mensagem, com o PDF e a planilha gerados de novo a partir das mesmas unidades e um Message-ID próprio, para o Gmail não escondê-lo como duplicata; sem internet, fica na fila. Inventário com dados gravados por versões antigas que não passam mais nas regras atuais não é reenviado e continua como enviado.
 
 Leitor:
 

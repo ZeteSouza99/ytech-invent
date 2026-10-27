@@ -821,4 +821,25 @@ describe('reenvio de inventário já enviado', () => {
       expect((await repository.get(d.owner, d.id)).resends).toBeUndefined();
     } finally { sqlite.close(); }
   });
+
+  // Data saved under older rules would fail every attempt: refused up front, the inventory stays sent with its receipt.
+  it('recusa reenviar dados que não passam mais nas regras atuais e mantém o inventário enviado', async () => {
+    const { repository, sqlite } = connect();
+    try {
+      await repository.initialize();
+      const unreadable = await queued(repository);
+      const oldTitle = await queued(repository, { title: 'Antigo' });
+      const { delivery, calls } = resendDelivery();
+      await new Outbox(repository, delivery).sync(unreadable.owner);
+      sqlite.prepare('UPDATE inventories SET organization=? WHERE id=?').run('{não é json', unreadable.id);
+      sqlite.prepare('UPDATE inventories SET title=? WHERE id=?').run('Sala\tA', oldTitle.id);
+      for (const [d, reason] of [[unreadable, 'identificação da empresa'], [oldTitle, 'controle']] as const) {
+        const before = await repository.get(d.owner, d.id);
+        expect(before).toMatchObject({ state: 'sent', receipt: expect.stringContaining('Enviado pelo seu Gmail') });
+        await expect(repository.resend(d.owner, d.id, 'compras@cliente.com.br')).rejects.toThrow(reason);
+        expect(await repository.get(d.owner, d.id)).toEqual(before);
+      }
+      expect(calls.transmit).toHaveLength(2);
+    } finally { sqlite.close(); }
+  });
 });

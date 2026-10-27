@@ -382,7 +382,12 @@ function Application() {
       finally { await data.reloadList(); }
     }); };
     if (!allowUncertain) { send(); return; }
-    Alert.alert('Reenviar este inventário?', `Abra a pasta Enviados do seu Gmail e procure “Inventário Ytech: ${current.title}”. Se a mensagem já estiver lá, não reenvie: ${current.recipient ?? DEFAULT_RECIPIENT} receberia uma cópia duplicada.`, [
+    const recipientNow = current.recipient ?? DEFAULT_RECIPIENT;
+    // After a resend, the original message and earlier resends with the same subject are already in Sent.
+    const lookFor = current.resends
+      ? `procure “Inventário Ytech: ${current.title}” com o horário deste reenvio (a mensagem original e os reenvios anteriores também aparecem lá)`
+      : `procure “Inventário Ytech: ${current.title}”`;
+    Alert.alert('Reenviar este inventário?', `Abra a pasta Enviados do seu Gmail e ${lookFor}. Se a mensagem já estiver lá, não reenvie: ${recipientNow} receberia uma cópia duplicada.`, [
       { text: 'Não reenviar', style: 'cancel' },
       { text: 'Não está em Enviados, reenviar', style: 'destructive', onPress: send },
     ]);

@@ -67,6 +67,7 @@ const newDraftSchema = z.object({ id: z.uuid(), owner: z.string().min(1), starte
 const ORGANIZATION_PROBLEM = 'A identificação da empresa salva neste inventário está ilegível. Edite a identificação antes de concluir ou exportar; as unidades estão preservadas.';
 const DAMAGED_PROBLEM = 'Os dados deste inventário não puderam ser lidos neste aparelho. Nada foi apagado; exporte as demais coletas e procure o suporte antes de excluí-lo.';
 const CLOCK_BEHIND = 'A data e a hora do aparelho estão antes do início desta coleta. Corrija o relógio do aparelho e salve de novo; esta unidade não foi gravada.';
+const RESEND_NOT_SENT = 'Só é possível reenviar um inventário que já foi enviado.';
 const RECIPIENT_SETTING = 'recipient';
 
 // Applied in order; PRAGMA user_version records how many already ran. Never edit a released step: append a new one.
@@ -471,11 +472,14 @@ export class InventoryRepository {
   resend(owner: string, id: string, recipient: string): Promise<void> {
     return this.serialize(async () => {
       const to = recipientSchema.parse(recipient);
-      await this.get(owner, id);
+      const draft = await this.get(owner, id);
+      if (draft.state !== 'sent') throw new Error(RESEND_NOT_SENT);
+      // Data saved under older rules would fail every attempt; checked first, the inventory stays sent with its receipt.
+      await this.validated(draft, draft.completedAt);
       const result = await this.db.runAsync(
         "UPDATE inventories SET state='queued',lastError='',receipt=NULL,recipient=?,resends=resends+1 WHERE id=? AND owner=? AND state='sent'",
         to, id, owner);
-      if (!result.changes) throw new Error('Só é possível reenviar um inventário que já foi enviado.');
+      if (!result.changes) throw new Error(RESEND_NOT_SENT);
     });
   }
 
