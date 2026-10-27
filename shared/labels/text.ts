@@ -168,12 +168,15 @@ function pnFromTokens(
     if (near) return fromCode(near);
   }
   if (approximate) return approximate;
+  return asPrinted(tokens, raw, catalog, box);
+}
+
+// The part number as printed, when no barcode, catalog entry or counted part number accounts for it.
+function asPrinted(tokens: string[], raw: string, catalog: CatalogIndex, box?: Box): Reading | null {
   const first = tokens[0];
-  if (first && first.length >= 5 && /[A-Z]/.test(first) && /\d/.test(first) && !excludedValue(first)) {
-    const value = zeroRuns(first);
-    return makeReading('pn', value, raw, 'ocr', ['texto', 'rotulo', ...(value !== first ? ['digitos-corrigidos' as const] : [])], catalog, box);
-  }
-  return null;
+  if (!first || first.length < 5 || !/[A-Z]/.test(first) || !/\d/.test(first) || excludedValue(first)) return null;
+  const value = zeroRuns(first);
+  return makeReading('pn', value, raw, 'ocr', ['texto', 'rotulo', ...(value !== first ? ['digitos-corrigidos' as const] : [])], catalog, box);
 }
 
 function mapDigits(value: string, from: number): string {
@@ -225,23 +228,37 @@ function nsFromTokens(
   return generic ? ocr(generic, []) : null;
 }
 
+// On every label seen, the part number is printed above or beside its serial number.
+function pairingCost(serial: Box, partNumber: Box): number {
+  const position = center(serial);
+  const other = center(partNumber);
+  const dy = position.y - other.y;
+  return Math.abs(position.x - other.x) * 0.3 + (dy >= -serial.height ? Math.abs(dy) : Math.abs(dy) * 4);
+}
+
 function pairsOf(readings: Reading[]): { ns: string; pn: string }[] {
   const partNumbers = readings.filter(reading => reading.field === 'pn' && reading.box && reading.confidence !== 'baixa');
   const pairs: { ns: string; pn: string }[] = [];
   for (const serial of readings) {
     if (serial.field !== 'ns' || !serial.box) continue;
-    const position = center(serial.box);
     let best: { pn: string; cost: number } | null = null;
     for (const partNumber of partNumbers) {
-      const other = center(partNumber.box!);
-      const dy = position.y - other.y;
-      // On every label seen, the part number is printed above or beside its serial number.
-      const cost = Math.abs(position.x - other.x) * 0.3 + (dy >= -serial.box.height ? Math.abs(dy) : Math.abs(dy) * 4);
+      const cost = pairingCost(serial.box, partNumber.box!);
       if (!best || cost < best.cost) best = { pn: partNumber.value, cost };
     }
     if (best) pairs.push({ ns: serial.value, pn: best.pn });
   }
   return pairs;
+}
+
+// The serial number in view that a part number printed at `box` belongs to.
+function ownerOf(box: Box, serials: Reading[]): string | undefined {
+  let best: { ns: string; cost: number } | null = null;
+  for (const serial of serials) {
+    const cost = pairingCost(serial.box!, box);
+    if (!best || cost < best.cost) best = { ns: serial.value, cost };
+  }
+  return best?.ns;
 }
 
 function focusOf(readings: Reading[], width?: number, height?: number): string | undefined {
@@ -270,10 +287,13 @@ export function analyzeLabel(scan: LabelScan, catalog: CatalogIndex): LabelAnaly
     return { text, ...(line.box ? { box: line.box } : {}), hits: labelHits(text) };
   });
 
+  // A suggested part number ('catalogo-aproximado') waits until every exact reading of the photo is known.
+  const suggestions: { reading: Reading; printed: Reading | null }[] = [];
   lines.forEach((line, index) => {
     for (const region of valueRegions(line)) {
       if (region.kind === 'other') continue;
       let tokens = tokensOf(region.text);
+      let origin = line;
       let reading = region.kind === 'pn'
         ? pnFromTokens(tokens, line.text, catalog, decoded, line.box)
         : nsFromTokens(tokens, line.text, catalog, decoded, line.box);
@@ -282,16 +302,17 @@ export function analyzeLabel(scan: LabelScan, catalog: CatalogIndex): LabelAnaly
           if (neighbour.hits.some(hit => hit.kind !== 'other' && hit.start === 0)) break;
           if (neighbour.hits.length && neighbour.hits[0]!.start === 0) continue;
           tokens = tokensOf(unlabeledText(neighbour));
+          origin = neighbour;
           reading = region.kind === 'pn'
             ? pnFromTokens(tokens, neighbour.text, catalog, decoded, neighbour.box)
             : nsFromTokens(tokens, neighbour.text, catalog, decoded, neighbour.box);
           if (reading) break;
         }
       }
-      if (reading) {
-        if (reading.source === 'barcode') claimed.add(reading.value);
-        mergeInto(readings, reading, catalog);
-      }
+      if (!reading) continue;
+      if (reading.source === 'barcode') claimed.add(reading.value);
+      if (reading.evidence.includes('catalogo-aproximado')) suggestions.push({ reading, printed: asPrinted(tokens, origin.text, catalog, origin.box) });
+      else mergeInto(readings, reading, catalog);
     }
   });
 
@@ -316,6 +337,20 @@ export function analyzeLabel(scan: LabelScan, catalog: CatalogIndex): LabelAnaly
         break;
       }
     }
+  }
+
+  // With several units in view, text close to a part number printed exactly on another unit's label is more likely a
+  // sibling model (ZT41142 and ZT41143) than a misreading of it: keep what that label shows, so that each serial
+  // number pairs with the part number of its own label.
+  const known = new Map(readings);
+  const confirmed = [...known.values()].filter(barcodeConfirmed);
+  const inView = [...known.values()].filter(reading =>
+    reading.field === 'ns' && reading.box && reading.confidence !== 'baixa' && !shadowedBy(reading, confirmed));
+  for (const { reading, printed } of suggestions) {
+    const exact = known.get(`pn|${reading.value}`);
+    const elsewhere = inView.length > 1 && !!exact?.box && !!reading.box && ownerOf(exact.box, inView) !== ownerOf(reading.box, inView);
+    const chosen = elsewhere ? printed : reading;
+    if (chosen) mergeInto(readings, chosen, catalog);
   }
 
   const all = [...readings.values()];

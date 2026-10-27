@@ -19,6 +19,7 @@ Destinatário:
 Leitor:
 
 - PN já contado pela conta neste aparelho é aceito na primeira foto quando a leitura é o próprio PN (código ou texto, desconsiderando hífens, espaços e zeros lidos como O). Uma leitura apenas parecida (Z/2, S/5, B/8, G/6 ou um caractere de diferença) é sugerida como o PN contado, mas pede conferência com a etiqueta e uma segunda foto, porque pode ser um modelo irmão ou um erro de leitura salvo antes. Um PN salvo durante a leitura já vale para a unidade seguinte.
+- Com várias etiquetas na foto, cada NS só é confirmado com o PN da própria etiqueta. Um modelo irmão ao lado de outro (ZT41142 e ZT41143) deixa de receber o PN da etiqueta vizinha, e o PN de uma etiqueta não substitui o de outra que ainda está sendo confirmado.
 
 Segurança e dados:
 

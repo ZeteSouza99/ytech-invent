@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   analyzeLabel, classifyBarcode, createCatalogIndex, ReadingPool, skeleton,
-  type BarcodeRead, type LabelScan, type Reading, type TextLineRead,
+  type BarcodeRead, type Decision, type LabelScan, type Reading, type TextLineRead,
 } from '../shared/labels';
 
 const catalog = createCatalogIndex([
@@ -396,5 +396,51 @@ describe('PN já contado (histórico)', () => {
     expect(ambiguous.match('RT1O00-AB')).toBeNull();
     expect(values(analyzeLabel(label('RT1O00-AB'), ambiguous).readings, 'pn')).toEqual([['RT1000-AB', 'media']]);
     expect(firstPhoto(label('RT1O00-AB'), ambiguous).status).toBe('searching');
+  });
+});
+
+describe('várias etiquetas na mesma foto', () => {
+  const TOP = '25150523023493';
+  const BOTTOM = '03052211308046';
+  // Two labels, one above the other. With `centered`, the bottom one is at the center of the photo and is aimed at.
+  function twoLabels(topPn: string, bottomPn: string, centered = false): LabelScan {
+    const bottom = centered ? 740 : 1100;
+    return {
+      ...(centered ? { width: 1200, height: 1600 } : {}),
+      lines: [line(`P/N: ${topPn}`, 60), line(`(S) S/N: ${TOP}`, 100), line(`P/N: ${bottomPn}`, bottom), line(`(S) S/N: ${BOTTOM}`, bottom + 40)],
+      barcodes: [code(TOP, 140), code(BOTTOM, bottom + 80)],
+    };
+  }
+  function after(frames: number, scan: LabelScan, index: typeof catalog): Decision {
+    const pool = new ReadingPool();
+    let decision: Decision | undefined;
+    for (let frame = 0; frame < frames; frame += 1) {
+      pool.addFrame(analyzeLabel(scan, index));
+      decision = pool.decide({ savedSerials: new Set() });
+    }
+    return decision!;
+  }
+  function options(decision: Decision) {
+    if (decision.status !== 'multiple') throw new Error(`Esperava escolha entre etiquetas, veio ${decision.status}.`);
+    return Object.fromEntries(decision.options.map(option => [option.ns.value, option.pn ? `${option.pn.value}/${option.pn.confidence}` : 'sem PN']));
+  }
+
+  // ZT41143 is not in the test catalog: it is the sibling of the catalog ZT41142, one character away.
+  it.each([
+    ['contado fora do catálogo', createCatalogIndex([], ['XT4100-B2C3D4']), 'XT4100-B2C3D4', 'XT4100-82C3D4'],
+    ['do catálogo', catalog, 'ZT41142-T0A0000Z', 'ZT41143-T0A0000Z'],
+  ])('a etiqueta do modelo irmão não recebe o PN %s da vizinha', (_kind, index, known, sibling) => {
+    expect(options(after(1, twoLabels(known, sibling), index))).toEqual({ [TOP]: `${known}/alta`, [BOTTOM]: 'sem PN' });
+    expect(options(after(2, twoLabels(known, sibling), index))).toEqual({ [TOP]: `${known}/alta`, [BOTTOM]: `${sibling}/media` });
+  });
+
+  it('com a etiqueta do modelo irmão no centro, espera o PN dela em vez de usar o da vizinha', () => {
+    const counted = createCatalogIndex([], ['XT4100-B2C3D4']);
+    const scan = twoLabels('XT4100-B2C3D4', 'XT4100-82C3D4', true);
+    expect(after(1, scan, counted)).toMatchObject({ status: 'searching', ns: { value: BOTTOM }, pn: { value: 'XT4100-82C3D4' } });
+    expect(after(2, scan, counted)).toMatchObject({ status: 'ready', ns: { value: BOTTOM }, pn: { value: 'XT4100-82C3D4', confidence: 'media' } });
+    // The label aimed at with the known part number is still ready at once.
+    const known = twoLabels('XT4100-82C3D4', 'XT4100-B2C3D4', true);
+    expect(after(1, known, counted)).toMatchObject({ status: 'ready', ns: { value: BOTTOM }, pn: { value: 'XT4100-B2C3D4', confidence: 'alta' } });
   });
 });

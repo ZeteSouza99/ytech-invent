@@ -130,9 +130,12 @@ export class ReadingPool {
       const paired = serial ? this.pairs.get(serial.reading.value) : undefined;
       const pairedEntry = paired ? acceptedPns.find(entry => entry.reading.value === paired) : undefined;
       const distinct = new Set(acceptedPns.map(entry => entry.reading.value));
+      // With several labels in view, another label's part number must not stand in for this label's own one
+      // while it is still being confirmed.
+      const ownPending = !pairedEntry && paired !== undefined && this.latestSerials > 1;
       if (pairedEntry) partNumber = pairedEntry.reading;
-      else if (distinct.size === 1) partNumber = acceptedPns[0]!.reading;
-      else if (distinct.size > 1 && serial) {
+      else if (!ownPending && distinct.size === 1) partNumber = acceptedPns[0]!.reading;
+      else if (!ownPending && distinct.size > 1 && serial) {
         return { status: 'multiple', options: acceptedPns.map(entry => ({ pn: entry.reading, ns: serial!.reading })) };
       }
     }
