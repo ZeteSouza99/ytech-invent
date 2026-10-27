@@ -42,6 +42,7 @@ Correções:
 
 - Nome do remetente com vírgula ou outros sinais de endereço passa a ir entre aspas no cabeçalho `From`.
 - "Exportar todos" deixa de fora, com aviso, um inventário que não pode ser lido, em vez de cancelar a exportação inteira.
+- Voltar à lista e reabrir o mesmo inventário mostrava "0 unidades" e "Nenhum item contado" e escondia **Exportar ou compartilhar arquivo**, embora as unidades continuassem salvas; agora elas são recarregadas.
 
 Projeto:
 

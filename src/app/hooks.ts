@@ -191,9 +191,15 @@ export function useInventoryData(repository: InventoryRepository | null, owner: 
   }, [reloadItems]);
 
   const select = useCallback((id: string | null) => {
+    // Opening the inventory already open again reloads its units: clearing them would leave the screen empty,
+    // because the selection does not change and nothing else would load them.
+    if (id === selectedRef.current) {
+      reloadItems().catch(failure => errorRef.current(errorMessage(failure)));
+      return;
+    }
     setItems([]);
     setSelectedId(id);
-  }, []);
+  }, [reloadItems]);
 
   const forgetInventory = useCallback((id: string) => {
     listSequence.current += 1;
