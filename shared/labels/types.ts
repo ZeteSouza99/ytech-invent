@@ -29,8 +29,8 @@ export type Reading = {
 
 export type LabelAnalysis = {
   readings: Reading[];
-  // Serial number -> part number printed on the same label, when the photo shows several units.
-  pairs: { ns: string; pn: string }[];
+  // Serial number -> part number printed on the same label, and whether that part number is only a suggestion.
+  pairs: { ns: string; pn: string; suggested?: true }[];
   // Serial number of the label at the center of the photo, when it clearly stands out.
   focus?: string;
   // Different serial numbers in this photo; more than one means several labels are in view.

@@ -444,3 +444,51 @@ describe('várias etiquetas na mesma foto', () => {
     expect(after(1, known, counted)).toMatchObject({ status: 'ready', ns: { value: BOTTOM }, pn: { value: 'XT4100-B2C3D4', confidence: 'alta' } });
   });
 });
+
+describe('câmera passando da unidade salva para a próxima', () => {
+  const SAVED = '25150523023493';
+  const NEXT = '03052211308046';
+  // One label in view at a time, as the camera moves from the unit just saved to the next one.
+  function single(pn: string | null, ns: string | null): LabelScan {
+    return {
+      lines: [...(pn ? [line(`P/N: ${pn}`, 100)] : []), ...(ns ? [line(`(S) S/N: ${ns}`, 140)] : [])],
+      barcodes: ns ? [code(ns, 180)] : [],
+    };
+  }
+  function decisions(scans: LabelScan[], index: typeof catalog): string[] {
+    const pool = new ReadingPool();
+    return scans.map(scan => {
+      pool.addFrame(analyzeLabel(scan, index));
+      const decision = pool.decide({ savedSerials: new Set([SAVED]) });
+      return decision.status === 'ready' ? `${decision.ns.value} ${decision.pn.value}/${decision.pn.confidence}` : decision.status;
+    });
+  }
+
+  it('a próxima unidade espera o próprio PN em vez de herdar o da unidade salva', () => {
+    // XT4100-82C3D4 is not in the catalog: the next label needs a second photo of its own part number.
+    expect(decisions([single('MC3401-0G1R64SS-A6', SAVED), single('XT4100-82C3D4', NEXT), single('XT4100-82C3D4', NEXT)], catalog))
+      .toEqual(['searching', 'searching', `${NEXT} XT4100-82C3D4/media`]);
+  });
+
+  it('um modelo irmão recebe a sugestão do PN contado só depois da segunda foto, sem confirmação', () => {
+    const counted = createCatalogIndex([], ['XT4100-B2C3D4']);
+    expect(decisions([single('XT4100-B2C3D4', SAVED), single('XT4100-82C3D4', NEXT), single('XT4100-82C3D4', NEXT)], counted))
+      .toEqual(['searching', 'searching', `${NEXT} XT4100-B2C3D4/media`]);
+  });
+
+  it('uma etiqueta sem PN não recebe o PN da unidade salva e pede o PN', () => {
+    const pool = new ReadingPool();
+    let decision: Decision | undefined;
+    for (const scan of [single('MC3401-0G1R64SS-A6', SAVED), single(null, NEXT), single(null, NEXT), single(null, NEXT)]) {
+      pool.addFrame(analyzeLabel(scan, catalog));
+      decision = pool.decide({ savedSerials: new Set([SAVED]) });
+      expect(decision.status).toBe('searching');
+    }
+    expect(decision).toMatchObject({ ns: { value: NEXT }, hint: expect.stringContaining('não mostra o PN') });
+  });
+
+  it('o PN de uma etiqueta que só mostra o PN completa o NS lido em seguida', () => {
+    expect(decisions([single('MC3401-0G1R64SS-A6', null), single(null, NEXT)], catalog))
+      .toEqual(['searching', `${NEXT} MC3401-0G1R64SS-A6/alta`]);
+  });
+});

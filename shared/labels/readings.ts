@@ -13,6 +13,13 @@ export function barcodeConfirmed(reading: Reading): boolean {
   return reading.confidence === 'alta' && reading.evidence.includes('codigo');
 }
 
+// A known part number proposed for a text that only resembles it. It is compared with the label and never borrows
+// the certainty of an exact reading of that part number, which may come from another unit's label.
+export function suggestion(reading: Reading): boolean {
+  return reading.field === 'pn' && reading.evidence.includes('catalogo-aproximado')
+    && !reading.evidence.includes('catalogo') && !reading.evidence.includes('codigo');
+}
+
 function confidenceOf(field: LabelField, evidence: readonly Evidence[], strongCatalog: boolean): Confidence {
   const has = (item: Evidence) => evidence.includes(item);
   if (has('fixado')) return 'alta';

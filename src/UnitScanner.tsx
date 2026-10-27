@@ -321,9 +321,9 @@ export function UnitScanner({
           <Button title="Ler de novo" secondary disabled={controlsBusy} onPress={resume} />
         </View> : <>
           <ReadingRow label="PN · Part number" reading={shownPn} description={describePn(shownPn)}
-            confirmations={shownPn ? pool.current.confirmations('pn', shownPn.value) : 0} />
+            confirmations={shownPn ? pool.current.confirmations(shownPn) : 0} />
           <ReadingRow label="NS · Número de série" reading={shownNs}
-            confirmations={shownNs ? pool.current.confirmations('ns', shownNs.value) : 0} />
+            confirmations={shownNs ? pool.current.confirmations(shownNs) : 0} />
         </>}
 
         {unit ? <View style={{ gap: 10 }}>

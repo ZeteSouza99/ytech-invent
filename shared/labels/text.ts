@@ -5,7 +5,7 @@ import {
   SERIAL_DIGITS, SERIAL_PRINTER, skeleton, strongSerial, zeroRuns,
 } from './values';
 import type { CatalogIndex } from './catalog';
-import { barcodeConfirmed, makeReading, mergeInto, shadowedBy } from './readings';
+import { barcodeConfirmed, makeReading, mergeInto, shadowedBy, suggestion } from './readings';
 import { barcodeFields, classifyBarcode, gs1Serial, printable } from './barcode';
 
 function cleanText(text: string): string {
@@ -236,17 +236,17 @@ function pairingCost(serial: Box, partNumber: Box): number {
   return Math.abs(position.x - other.x) * 0.3 + (dy >= -serial.height ? Math.abs(dy) : Math.abs(dy) * 4);
 }
 
-function pairsOf(readings: Reading[]): { ns: string; pn: string }[] {
+function pairsOf(readings: Reading[]): LabelAnalysis['pairs'] {
   const partNumbers = readings.filter(reading => reading.field === 'pn' && reading.box && reading.confidence !== 'baixa');
-  const pairs: { ns: string; pn: string }[] = [];
+  const pairs: LabelAnalysis['pairs'] = [];
   for (const serial of readings) {
     if (serial.field !== 'ns' || !serial.box) continue;
-    let best: { pn: string; cost: number } | null = null;
+    let best: { partNumber: Reading; cost: number } | null = null;
     for (const partNumber of partNumbers) {
       const cost = pairingCost(serial.box, partNumber.box!);
-      if (!best || cost < best.cost) best = { pn: partNumber.value, cost };
+      if (!best || cost < best.cost) best = { partNumber, cost };
     }
-    if (best) pairs.push({ ns: serial.value, pn: best.pn });
+    if (best) pairs.push({ ns: serial.value, pn: best.partNumber.value, ...(suggestion(best.partNumber) ? { suggested: true as const } : {}) });
   }
   return pairs;
 }
@@ -311,7 +311,7 @@ export function analyzeLabel(scan: LabelScan, catalog: CatalogIndex): LabelAnaly
       }
       if (!reading) continue;
       if (reading.source === 'barcode') claimed.add(reading.value);
-      if (reading.evidence.includes('catalogo-aproximado')) suggestions.push({ reading, printed: asPrinted(tokens, origin.text, catalog, origin.box) });
+      if (suggestion(reading)) suggestions.push({ reading, printed: asPrinted(tokens, origin.text, catalog, origin.box) });
       else mergeInto(readings, reading, catalog);
     }
   });
